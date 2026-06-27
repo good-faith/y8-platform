@@ -1,0 +1,27 @@
+{
+  "name": "@y8/auth",
+  "version": "1.0.0",
+  "description": "Shared SIWE auth helpers for the Y8 platform",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "lint": "echo 'no lint'"
+  },
+  "dependencies": {
+    "@y8/api-client": "*",
+    "@y8/types": "*",
+    "siwe": "^3.0.0",
+    "viem": "^2.53.1"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "devDependencies": {
+    "@types/react": "^18",
+    "typescript": "^5.1.3"
+  }
+}

@@ -1,0 +1,135 @@
+name: Deploy → Staging
+
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+    inputs:
+      app:
+        description: 'App to deploy (all, web, server, beach, premier)'
+        required: false
+        default: 'all'
+
+env:
+  GCP_REGION: us-central1
+  GCP_PROJECT: ${{ secrets.GCP_PROJECT_ID }}
+  REGISTRY: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/y8-staging
+  WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+  WIF_SA: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+jobs:
+  build-and-push:
+    name: Build & Push Images
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.tag.outputs.tag }}
+    permissions:
+      contents: read
+      id-token: write  # Required for Workload Identity Federation
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate image tag
+        id: tag
+        run: echo "tag=staging-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Authenticate to GCP (Workload Identity)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SA }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build & push server
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/server.Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/server:${{ steps.tag.outputs.tag }}
+          cache-from: type=gha,scope=server
+          cache-to: type=gha,mode=max,scope=server
+
+      - name: Build & push beach
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/beach.Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/beach:${{ steps.tag.outputs.tag }}
+          cache-from: type=gha,scope=beach
+          cache-to: type=gha,mode=max,scope=beach
+
+      - name: Build & push web
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/web.Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/web:${{ steps.tag.outputs.tag }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+      - name: Build & push premier
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/premier.Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/premier:${{ steps.tag.outputs.tag }}
+          cache-from: type=gha,scope=premier
+          cache-to: type=gha,mode=max,scope=premier
+
+  terraform-staging:
+    name: Terraform Apply → Staging
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment: staging
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SA }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.7.0'
+
+      - name: Terraform init
+        run: terraform init
+        working-directory: infra/environments/staging
+
+      - name: Terraform plan
+        run: |
+          terraform plan \
+            -var="project_id=${{ env.GCP_PROJECT }}" \
+            -var="app_image_tag=${{ needs.build-and-push.outputs.image_tag }}" \
+            -var="github_org=${{ github.repository_owner }}" \
+            -out=tfplan
+        working-directory: infra/environments/staging
+
+      - name: Terraform apply
+        run: terraform apply -auto-approve tfplan
+        working-directory: infra/environments/staging
+
+      - name: Print staging URLs
+        run: |
+          echo '## Staging Deployment 🟡' >> $GITHUB_STEP_SUMMARY
+          echo '' >> $GITHUB_STEP_SUMMARY
+          terraform output -json | jq -r '.staging_urls.value | to_entries[] | "- **\(.key)**: \(.value)"' >> $GITHUB_STEP_SUMMARY
+        working-directory: infra/environments/staging

@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, staging]
+
+jobs:
+  build-check:
+    name: Build & Lint — ${{ matrix.app }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: y8-app
+            build_cmd: "npm run build"
+          - app: y8-server
+            build_cmd: "npm run build"
+          - app: y8-premier
+            build_cmd: "npm run build"
+          - app: the-beach
+            build_cmd: "npx nest build"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: '${{ matrix.app }}/package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ${{ matrix.app }}
+
+      - name: Lint
+        run: npm run lint --if-present
+        working-directory: ${{ matrix.app }}
+        continue-on-error: true
+
+      - name: Build
+        run: ${{ matrix.build_cmd }}
+        working-directory: ${{ matrix.app }}
+        env:
+          SKIP_ENV_VALIDATION: 'true'
+          NEXT_TELEMETRY_DISABLED: '1'
+
+  docker-validate:
+    name: Docker Build Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Validate server Dockerfile
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/server.Dockerfile
+          push: false
+          cache-from: type=gha,scope=server
+          cache-to: type=gha,mode=max,scope=server
+
+      - name: Validate beach Dockerfile
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/beach.Dockerfile
+          push: false
+          cache-from: type=gha,scope=beach
+          cache-to: type=gha,mode=max,scope=beach
+
+      - name: Validate web Dockerfile
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/web.Dockerfile
+          push: false
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+      - name: Validate premier Dockerfile
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/premier.Dockerfile
+          push: false
+          cache-from: type=gha,scope=premier
+          cache-to: type=gha,mode=max,scope=premier
+
+  terraform-validate:
+    name: Terraform Validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.7.0'
+
+      - name: Terraform init (no backend)
+        run: terraform init -backend=false
+        working-directory: infra
+
+      - name: Terraform validate
+        run: terraform validate
+        working-directory: infra
+
+      - name: Terraform format check
+        run: terraform fmt -check -recursive
+        working-directory: infra
+        continue-on-error: true

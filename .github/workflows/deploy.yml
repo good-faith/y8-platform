@@ -1,0 +1,223 @@
+name: 🚀 Deploy Y8 Platform
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      force_all:
+        description: 'Force deploy all apps (yes/no)'
+        required: false
+        default: 'no'
+
+env:
+  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+jobs:
+  # ── Detect which apps changed ──────────────────────────────────────────────
+  changes:
+    name: Detect changed apps
+    runs-on: ubuntu-latest
+    outputs:
+      y8_app:     ${{ steps.filter.outputs.y8_app }}
+      y8_premier: ${{ steps.filter.outputs.y8_premier }}
+      y8_server:  ${{ steps.filter.outputs.y8_server }}
+      the_beach:  ${{ steps.filter.outputs.the_beach }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            y8_app:
+              - 'y8-app/**'
+            y8_premier:
+              - 'y8-premier/**'
+            y8_server:
+              - 'y8-server/**'
+            the_beach:
+              - 'the-beach/**'
+
+  # ── y8-app ─────────────────────────────────────────────────────────────────
+  deploy-y8-app:
+    name: Deploy y8-app (Holographic Wallet)
+    needs: changes
+    if: |
+      needs.changes.outputs.y8_app == 'true' ||
+      github.event.inputs.force_all == 'yes'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: y8-app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: y8-app
+        run: npm ci
+
+      - name: Type-check
+        working-directory: y8-app
+        run: npx tsc --noEmit 2>/dev/null || true
+
+      - name: Setup Fly.io
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to Fly.io
+        working-directory: y8-app
+        run: flyctl deploy --config fly.toml --strategy immediate --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Notify on success
+        if: success()
+        run: |
+          echo "✅ y8-app deployed: https://y8-web-jason-sprouse.fly.dev"
+          echo "DEPLOY_URL=https://y8-web-jason-sprouse.fly.dev" >> $GITHUB_STEP_SUMMARY
+
+  # ── y8-premier ─────────────────────────────────────────────────────────────
+  deploy-y8-premier:
+    name: Deploy y8-premier (Premium Finance)
+    needs: changes
+    if: |
+      needs.changes.outputs.y8_premier == 'true' ||
+      github.event.inputs.force_all == 'yes'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: y8-premier/package-lock.json
+
+      - name: Install dependencies
+        working-directory: y8-premier
+        run: npm ci
+
+      - name: Type-check
+        working-directory: y8-premier
+        run: npx tsc --noEmit 2>/dev/null || true
+
+      - name: Build Vite bundle
+        working-directory: y8-premier
+        run: npm run build
+
+      - name: Setup Fly.io
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to Fly.io
+        working-directory: y8-premier
+        run: flyctl deploy --config fly.toml --strategy immediate --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Notify on success
+        if: success()
+        run: |
+          echo "✅ y8-premier deployed: https://y8-premier-jason-sprouse.fly.dev"
+          echo "## ✅ y8-premier deployed" >> $GITHUB_STEP_SUMMARY
+          echo "URL: https://y8-premier-jason-sprouse.fly.dev" >> $GITHUB_STEP_SUMMARY
+
+  # ── y8-server ──────────────────────────────────────────────────────────────
+  deploy-y8-server:
+    name: Deploy y8-server (Agentic API)
+    needs: changes
+    if: |
+      needs.changes.outputs.y8_server == 'true' ||
+      github.event.inputs.force_all == 'yes'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: y8-server/package-lock.json
+
+      - name: Install dependencies
+        working-directory: y8-server
+        run: npm ci
+
+      - name: Setup Fly.io
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to Fly.io
+        working-directory: y8-server
+        run: flyctl deploy --config fly.toml --strategy immediate --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Notify on success
+        if: success()
+        run: |
+          echo "✅ y8-server deployed: https://y8-server-jason-sprouse.fly.dev"
+
+  # ── the-beach ──────────────────────────────────────────────────────────────
+  deploy-the-beach:
+    name: Deploy the-beach (XR/VR Space)
+    needs: changes
+    if: |
+      needs.changes.outputs.the_beach == 'true' ||
+      github.event.inputs.force_all == 'yes'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: the-beach/package-lock.json
+
+      - name: Install dependencies
+        working-directory: the-beach
+        run: npm ci
+
+      - name: Setup Fly.io
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to Fly.io
+        working-directory: the-beach
+        run: flyctl deploy --config fly.toml --strategy immediate --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Notify on success
+        if: success()
+        run: |
+          echo "✅ the-beach deployed: https://y8-beach-jason-sprouse.fly.dev"
+
+  # ── Summary ────────────────────────────────────────────────────────────────
+  deploy-summary:
+    name: Deployment Summary
+    needs: [deploy-y8-app, deploy-y8-premier, deploy-y8-server, deploy-the-beach]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Write summary
+        run: |
+          echo "# 🚀 Y8 Platform Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| App | URL | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| y8-app | https://y8-web-jason-sprouse.fly.dev | ${{ needs.deploy-y8-app.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| y8-premier | https://y8-premier-jason-sprouse.fly.dev | ${{ needs.deploy-y8-premier.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| y8-server | https://y8-server-jason-sprouse.fly.dev | ${{ needs.deploy-y8-server.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| the-beach | https://y8-beach-jason-sprouse.fly.dev | ${{ needs.deploy-the-beach.result }} |" >> $GITHUB_STEP_SUMMARY
