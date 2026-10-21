@@ -2,7 +2,7 @@ name: 🚀 Deploy Y8 Platform
 
 on:
   push:
-    branches: [main, staging]
+    branches: [main, development]
   workflow_dispatch:
     inputs:
       force_all:
