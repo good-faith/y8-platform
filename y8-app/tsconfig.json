@@ -15,10 +15,10 @@
         "components/*"
       ],
       "react": [
-        "./node_modules/@types/react"
+        "../node_modules/@types/react"
       ],
       "react/*": [
-        "./node_modules/@types/react/*"
+        "../node_modules/@types/react/*"
       ]
     },
     "allowJs": true,

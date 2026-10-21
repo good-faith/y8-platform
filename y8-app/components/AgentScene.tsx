@@ -12,6 +12,12 @@ declare module 'react' {
   }
 }
 
+declare global {
+  namespace JSX {
+    interface IntrinsicElements extends ThreeElements {}
+  }
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const TIER_COLOR: Record<string, string> = {
