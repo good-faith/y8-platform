@@ -8,7 +8,7 @@ on:
       force_all:
         description: 'Force deploy all apps (yes/no)'
         required: false
-        default: 'no'
+        default: 'yes'
 
 env:
   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
@@ -77,31 +77,20 @@ jobs:
           node scripts/patch-noble-hashes.cjs
 
       - name: Type-check y8-app
-        run: npx tsc --noEmit -p y8-app/tsconfig.json 2>/dev/null || true
+        run: npx tsc --noEmit -p y8-app/tsconfig.json
 
-      - name: Build y8-app
-        working-directory: y8-app
-        run: npm run build
-        env:
-          SKIP_ENV_VALIDATION: 'true'
-          NEXT_TELEMETRY_DISABLED: '1'
+      - name: Setup Fly.io
+        uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy to Fly.io
+        run: flyctl deploy . --config y8-app/fly.toml --dockerfile docker/web.Dockerfile --strategy immediate --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          if [ -z "$FLY_API_TOKEN" ]; then
-            echo "::notice::FLY_API_TOKEN is not set in GitHub Secrets. Build succeeded; skipping remote Fly.io deployment."
-            exit 0
-          fi
-          curl -L https://fly.io/install.sh | sh
-          export PATH="$HOME/.fly/bin:$PATH"
-          flyctl deploy . --config y8-app/fly.toml --dockerfile docker/web.Dockerfile --strategy immediate --remote-only
 
       - name: Notify on success
         if: success()
         run: |
-          echo "✅ y8-app verified: https://y8-web-jason-sprouse.fly.dev"
+          echo "✅ y8-app deployed: https://y8-web-jason-sprouse.fly.dev"
           echo "DEPLOY_URL=https://y8-web-jason-sprouse.fly.dev" >> $GITHUB_STEP_SUMMARY
 
   # ── y8-premier ─────────────────────────────────────────────────────────────
@@ -126,29 +115,25 @@ jobs:
         run: npm ci --legacy-peer-deps
 
       - name: Type-check y8-premier
-        run: npx tsc --noEmit -p y8-premier/tsconfig.json 2>/dev/null || true
+        run: npx tsc --noEmit -p y8-premier/tsconfig.json
 
       - name: Build y8-premier bundle
         working-directory: y8-premier
         run: npm run build
 
+      - name: Setup Fly.io
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
       - name: Deploy to Fly.io
+        run: flyctl deploy . --config y8-premier/fly.toml --dockerfile docker/premier.Dockerfile --strategy immediate --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          if [ -z "$FLY_API_TOKEN" ]; then
-            echo "::notice::FLY_API_TOKEN is not set in GitHub Secrets. Build succeeded; skipping remote Fly.io deployment."
-            exit 0
-          fi
-          curl -L https://fly.io/install.sh | sh
-          export PATH="$HOME/.fly/bin:$PATH"
-          flyctl deploy . --config y8-premier/fly.toml --dockerfile docker/premier.Dockerfile --strategy immediate --remote-only
 
       - name: Notify on success
         if: success()
         run: |
-          echo "✅ y8-premier verified: https://y8-premier-jason-sprouse.fly.dev"
-          echo "## ✅ y8-premier verified" >> $GITHUB_STEP_SUMMARY
+          echo "✅ y8-premier deployed: https://y8-premier-jason-sprouse.fly.dev"
+          echo "## ✅ y8-premier deployed" >> $GITHUB_STEP_SUMMARY
           echo "URL: https://y8-premier-jason-sprouse.fly.dev" >> $GITHUB_STEP_SUMMARY
 
   # ── y8-server ──────────────────────────────────────────────────────────────
@@ -176,22 +161,18 @@ jobs:
         working-directory: y8-server
         run: npm run build
 
+      - name: Setup Fly.io
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
       - name: Deploy to Fly.io
+        run: flyctl deploy . --config y8-server/fly.toml --dockerfile docker/server.Dockerfile --strategy immediate --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          if [ -z "$FLY_API_TOKEN" ]; then
-            echo "::notice::FLY_API_TOKEN is not set in GitHub Secrets. Build succeeded; skipping remote Fly.io deployment."
-            exit 0
-          fi
-          curl -L https://fly.io/install.sh | sh
-          export PATH="$HOME/.fly/bin:$PATH"
-          flyctl deploy . --config y8-server/fly.toml --dockerfile docker/server.Dockerfile --strategy immediate --remote-only
 
       - name: Notify on success
         if: success()
         run: |
-          echo "✅ y8-server verified: https://y8-server-jason-sprouse.fly.dev"
+          echo "✅ y8-server deployed: https://y8-server-jason-sprouse.fly.dev"
 
   # ── the-beach ──────────────────────────────────────────────────────────────
   deploy-the-beach:
@@ -218,22 +199,18 @@ jobs:
         working-directory: the-beach
         run: npx nest build
 
+      - name: Setup Fly.io
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
       - name: Deploy to Fly.io
+        run: flyctl deploy . --config the-beach/fly.toml --dockerfile docker/beach.Dockerfile --strategy immediate --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          if [ -z "$FLY_API_TOKEN" ]; then
-            echo "::notice::FLY_API_TOKEN is not set in GitHub Secrets. Build succeeded; skipping remote Fly.io deployment."
-            exit 0
-          fi
-          curl -L https://fly.io/install.sh | sh
-          export PATH="$HOME/.fly/bin:$PATH"
-          flyctl deploy . --config the-beach/fly.toml --dockerfile docker/beach.Dockerfile --strategy immediate --remote-only
 
       - name: Notify on success
         if: success()
         run: |
-          echo "✅ the-beach verified: https://y8-beach-jason-sprouse.fly.dev"
+          echo "✅ the-beach deployed: https://y8-beach-jason-sprouse.fly.dev"
 
   # ── Summary ────────────────────────────────────────────────────────────────
   deploy-summary:
