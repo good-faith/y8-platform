@@ -96,14 +96,14 @@ const connectors: CreateConnectorFn[] = rawConnectors.map((connectorFn) => {
 
 export const wagmiConfig = createConfig({
   connectors,
-  chains: [mainnet, polygon, optimism, base, sepolia, baseSepolia],
+  chains: [base, baseSepolia, mainnet, optimism, polygon, sepolia],
   ssr: true,
   transports: {
-    [mainnet.id]:     http('https://cloudflare-eth.com'),
-    [polygon.id]:     http('https://polygon-rpc.com'),
-    [optimism.id]:    http('https://mainnet.optimism.io'),
-    [base.id]:        http('https://base-mainnet.public.blastapi.io'),
-    [sepolia.id]:     http('https://ethereum-sepolia-rpc.publicnode.com'),
+    [base.id]:        http('https://mainnet.base.org'),
     [baseSepolia.id]: http('https://sepolia.base.org'),
+    [mainnet.id]:     http('https://ethereum-rpc.publicnode.com'),
+    [optimism.id]:    http('https://mainnet.optimism.io'),
+    [polygon.id]:     http('https://polygon-bor-rpc.publicnode.com'),
+    [sepolia.id]:     http('https://ethereum-sepolia-rpc.publicnode.com'),
   },
 });

@@ -7,6 +7,7 @@ import { AuthProvider } from '../context/AuthContext';
 import { wagmiConfig } from '../config/wagmi';
 import { RainbowKitSiweNextAuthProvider } from '@rainbow-me/rainbowkit-siwe-next-auth';
 import { RainbowKitProvider, lightTheme } from '@rainbow-me/rainbowkit';
+import { base } from 'wagmi/chains';
 import { SessionProvider } from 'next-auth/react';
 import PWAInstall from './PWAInstall';
 import '@rainbow-me/rainbowkit/styles.css';
@@ -27,7 +28,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       <SessionProvider refetchInterval={0}>
         <QueryClientProvider client={queryClient}>
           <RainbowKitSiweNextAuthProvider>
-            <RainbowKitProvider modalSize="compact" theme={Y8_LIGHT_THEME}>
+            <RainbowKitProvider modalSize="compact" theme={Y8_LIGHT_THEME} initialChain={base}>
               <AuthProvider>
                 <PWAInstall />
                 {children}

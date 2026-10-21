@@ -1,18 +1,17 @@
 import type { NextAuthOptions } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
-import { getCsrfToken } from 'next-auth/react';
 import { SiweMessage } from 'siwe';
-import { createPublicClient, http } from 'viem';
+import { createPublicClient, fallback, http } from 'viem';
 import { mainnet, polygon, optimism, base, sepolia, baseSepolia } from 'wagmi/chains';
 import { y8Auth, Y8User } from '../lib/y8-client';
 
-const CHAIN_RPC: Record<number, { chain: any; rpc: string }> = {
-  [mainnet.id]:     { chain: mainnet,     rpc: 'https://cloudflare-eth.com' },
-  [polygon.id]:     { chain: polygon,     rpc: 'https://polygon-rpc.com' },
-  [optimism.id]:    { chain: optimism,    rpc: 'https://mainnet.optimism.io' },
-  [base.id]:        { chain: base,        rpc: 'https://base-mainnet.public.blastapi.io' },
-  [sepolia.id]:     { chain: sepolia,     rpc: 'https://ethereum-sepolia-rpc.publicnode.com' },
-  [baseSepolia.id]: { chain: baseSepolia, rpc: 'https://sepolia.base.org' },
+const CHAIN_RPC: Record<number, { chain: any; rpcs: string[] }> = {
+  [base.id]:        { chain: base,        rpcs: ['https://mainnet.base.org', 'https://base-rpc.publicnode.com'] },
+  [baseSepolia.id]: { chain: baseSepolia, rpcs: ['https://sepolia.base.org', 'https://base-sepolia-rpc.publicnode.com'] },
+  [mainnet.id]:     { chain: mainnet,     rpcs: ['https://ethereum-rpc.publicnode.com', 'https://eth.llamarpc.com'] },
+  [optimism.id]:    { chain: optimism,    rpcs: ['https://mainnet.optimism.io', 'https://optimism-rpc.publicnode.com'] },
+  [polygon.id]:     { chain: polygon,     rpcs: ['https://polygon-bor-rpc.publicnode.com', 'https://polygon-rpc.com'] },
+  [sepolia.id]:     { chain: sepolia,     rpcs: ['https://ethereum-sepolia-rpc.publicnode.com'] },
 };
 
 // ─── NextAuth type augmentation ───────────────────────────────────────────────
@@ -70,39 +69,51 @@ export const authOptions: NextAuthOptions = {
             return null;
           }
 
-          // ── Step 1: verify SIWE with nonce (CSRF token) — prevents replay attacks ──
-          const siwe  = new SiweMessage(message);
-          const nonce = await getCsrfToken({ req: { headers: (credentials as any)?._req?.headers } });
+          // ── Step 1: verify SIWE message + signature (EOA or ERC-1271/6492 Smart Wallet) ──
+          const siwe = new SiweMessage(message);
+          if (!siwe.nonce || siwe.nonce.length < 8) {
+            console.error('[auth] Invalid or missing SIWE nonce');
+            return null;
+          }
 
           let verified = false;
           if (signature.length === 132) {
-            const result = await siwe.verify({ signature, ...(nonce ? { nonce } : {}) }).catch(() => ({ success: false }));
+            const result = await siwe.verify({ signature }).catch(() => ({ success: false }));
             verified = result.success;
           }
 
           // Fallback for Coinbase Smart Wallet (ERC-6492 / ERC-1271 contract signatures)
           if (!verified) {
-            if (nonce && siwe.nonce !== nonce) {
-              console.error('[auth] SIWE nonce mismatch');
-              return null;
+            const candidateChainIds = Array.from(
+              new Set([siwe.chainId, base.id, baseSepolia.id, mainnet.id]),
+            );
+
+            for (const cid of candidateChainIds) {
+              const chainEntry = CHAIN_RPC[cid];
+              if (!chainEntry) continue;
+
+              const publicClient = createPublicClient({
+                chain: chainEntry.chain,
+                transport: fallback(chainEntry.rpcs.map((url) => http(url))),
+              });
+
+              verified = await publicClient
+                .verifyMessage({
+                  address: siwe.address as `0x${string}`,
+                  message,
+                  signature: signature as `0x${string}`,
+                })
+                .catch((err) => {
+                  console.warn(`[auth] ERC-1271/6492 verify failed on chain ${cid}:`, err?.message ?? err);
+                  return false;
+                });
+
+              if (verified) break;
             }
-            const chainEntry = CHAIN_RPC[siwe.chainId] ?? CHAIN_RPC[base.id];
-            const publicClient = createPublicClient({
-              chain: chainEntry.chain,
-              transport: http(chainEntry.rpc),
-            });
-            verified = await publicClient.verifyMessage({
-              address: siwe.address as `0x${string}`,
-              message: siwe.prepareMessage(),
-              signature: signature as `0x${string}`,
-            }).catch((err) => {
-              console.error('[auth] ERC-1271/6492 verification failed:', err);
-              return false;
-            });
           }
 
           if (!verified) {
-            console.error('[auth] Local SIWE verification failed');
+            console.error(`[auth] SIWE verification failed for ${siwe.address} (sig len=${signature.length}, chain=${siwe.chainId})`);
             return null;
           }
 

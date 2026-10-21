@@ -47,11 +47,11 @@ export class AuthService {
         const isSepolia = siweMsg.chainId === 84532;
         const client = createPublicClient({
           chain: isSepolia ? baseSepolia : base,
-          transport: http(isSepolia ? 'https://sepolia.base.org' : 'https://base-mainnet.public.blastapi.io'),
+          transport: http(isSepolia ? 'https://sepolia.base.org' : 'https://mainnet.base.org'),
         });
         const valid = await client.verifyMessage({
           address: siweMsg.address as `0x${string}`,
-          message: siweMsg.prepareMessage(),
+          message,
           signature: signature as `0x${string}`,
         }).catch(() => false);
         if (valid) {
