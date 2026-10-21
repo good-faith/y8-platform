@@ -2,7 +2,7 @@ name: 🚀 Deploy Y8 Platform
 
 on:
   push:
-    branches: [main]
+    branches: [main, staging]
   workflow_dispatch:
     inputs:
       force_all:
@@ -36,22 +36,18 @@ jobs:
               - 'y8-app/**'
               - 'docker/web.Dockerfile'
               - 'packages/**'
-              - '.github/workflows/deploy.yml'
             y8_premier:
               - 'y8-premier/**'
               - 'docker/premier.Dockerfile'
               - 'packages/**'
-              - '.github/workflows/deploy.yml'
             y8_server:
               - 'y8-server/**'
               - 'docker/server.Dockerfile'
               - 'packages/**'
-              - '.github/workflows/deploy.yml'
             the_beach:
               - 'the-beach/**'
               - 'docker/beach.Dockerfile'
               - 'packages/**'
-              - '.github/workflows/deploy.yml'
 
   # ── y8-app ─────────────────────────────────────────────────────────────────
   deploy-y8-app:

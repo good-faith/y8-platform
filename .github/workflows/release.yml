@@ -1,0 +1,68 @@
+name: 📦 Release — Semantic Version Tag
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Publish GitHub Release (${{ github.ref_name }})
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Classify SemVer tag (dev / rc / stable)
+        id: semver
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if [[ "$TAG" == *"-dev."* ]]; then
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+            echo "channel=Development Checkpoint" >> $GITHUB_OUTPUT
+          elif [[ "$TAG" == *"-rc."* ]]; then
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+            echo "channel=Staging Release Candidate" >> $GITHUB_OUTPUT
+          elif [[ "$TAG" == *"-"* ]]; then
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+            echo "channel=Pre-Release" >> $GITHUB_OUTPUT
+          else
+            echo "prerelease=false" >> $GITHUB_OUTPUT
+            echo "channel=Stable Production Release" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          CHANNEL="${{ steps.semver.outputs.channel }}"
+          PRERELEASE="${{ steps.semver.outputs.prerelease }}"
+
+          NOTES_HEADER="### 🏷️ ${CHANNEL} (\`${TAG}\`)
+
+          | Application | Fly.io App | Live Endpoint |
+          | :--- | :--- | :--- |
+          | **y8-app** (Holographic Wallet) | \`y8-web-jason-sprouse\` | https://y8-web-jason-sprouse.fly.dev |
+          | **the-beach** (XR/VR Space) | \`y8-beach-jason-sprouse\` | https://y8-beach-jason-sprouse.fly.dev |
+          | **y8-server** (Agentic API) | \`y8-server-jason-sprouse\` | https://y8-server-jason-sprouse.fly.dev |
+          | **y8-premier** (Premium Finance) | \`y8-premier-jason-sprouse\` | https://y8-premier-jason-sprouse.fly.dev |
+          "
+
+          if [ "$PRERELEASE" = "true" ]; then
+            gh release create "$TAG" \
+              --title "$TAG — $CHANNEL" \
+              --notes "$NOTES_HEADER" \
+              --generate-notes \
+              --prerelease
+          else
+            gh release create "$TAG" \
+              --title "$TAG — $CHANNEL" \
+              --notes "$NOTES_HEADER" \
+              --generate-notes \
+              --latest
+          fi

@@ -1,6 +1,6 @@
 {
   "name": "@y8/auth",
-  "version": "1.0.0",
+  "version": "0.1.0-dev.1",
   "description": "Shared SIWE auth helpers for the Y8 platform",
   "main": "./src/index.ts",
   "types": "./src/index.ts",

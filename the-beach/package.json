@@ -1,6 +1,6 @@
 {
   "name": "the-beach",
-  "version": "0.0.1",
+  "version": "0.1.0-dev.1",
   "description": "web-xr-babylonjs-backend",
   "keywords": [
     "nestjs",
