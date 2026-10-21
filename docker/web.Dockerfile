@@ -39,6 +39,17 @@ console.log('noble-hashes patched');\
 # Copy full app source
 COPY y8-app/ ./y8-app/
 
+# Build-time NEXT_PUBLIC_* environment variables (inlined into client bundle)
+ARG NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=b56e18d47c72ab683b10814fe9495694
+ARG NEXT_PUBLIC_Y8_SERVER_URL=https://y8-server-jason-sprouse.fly.dev/api/v1
+ARG NEXT_PUBLIC_Y8_PREMIER_URL=https://y8-premier-jason-sprouse.fly.dev
+ARG NEXT_PUBLIC_THE_BEACH_URL=https://y8-beach-jason-sprouse.fly.dev
+
+ENV NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=$NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID
+ENV NEXT_PUBLIC_Y8_SERVER_URL=$NEXT_PUBLIC_Y8_SERVER_URL
+ENV NEXT_PUBLIC_Y8_PREMIER_URL=$NEXT_PUBLIC_Y8_PREMIER_URL
+ENV NEXT_PUBLIC_THE_BEACH_URL=$NEXT_PUBLIC_THE_BEACH_URL
+
 # Build Next.js
 WORKDIR /app/y8-app
 RUN npm run build

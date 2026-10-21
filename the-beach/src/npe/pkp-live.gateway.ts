@@ -85,7 +85,7 @@ export interface PKPAgent {
 @Injectable()
 @WebSocketGateway({
   cors: {
-    origin: /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/,
+    origin: /^https?:\/\/((localhost|127\.0\.0\.1)(:\d+)?|y8-(web|beach|server|premier)-jason-sprouse\.fly\.dev)$/,
     methods: ['GET', 'POST'],
     credentials: true,
   },

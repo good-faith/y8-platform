@@ -61,7 +61,7 @@ interface MovePayload {
   rotation: { x: number; y: number; z: number; w: number };
 }
 
-@WebSocketGateway({ cors: { origin: /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/, methods: ['GET', 'POST'], credentials: true } })
+@WebSocketGateway({ cors: { origin: /^https?:\/\/((localhost|127\.0\.0\.1)(:\d+)?|y8-(web|beach|server|premier)-jason-sprouse\.fly\.dev)$/, methods: ['GET', 'POST'], credentials: true } })
 @UseGuards(WsRateLimitGuard)
 export class AgentsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;

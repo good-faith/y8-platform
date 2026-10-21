@@ -5,10 +5,21 @@ primary_region = 'sjc'
 [build]
   dockerfile = '../docker/web.Dockerfile'
 
+  [build.args]
+    NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID = 'b56e18d47c72ab683b10814fe9495694'
+    NEXT_PUBLIC_Y8_SERVER_URL = 'https://y8-server-jason-sprouse.fly.dev/api/v1'
+    NEXT_PUBLIC_Y8_PREMIER_URL = 'https://y8-premier-jason-sprouse.fly.dev'
+    NEXT_PUBLIC_THE_BEACH_URL = 'https://y8-beach-jason-sprouse.fly.dev'
+
 [env]
   NODE_ENV = 'production'
   PORT = '3000'
   NEXT_TELEMETRY_DISABLED = '1'
+  NEXTAUTH_URL = 'https://y8-web-jason-sprouse.fly.dev'
+  NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID = 'b56e18d47c72ab683b10814fe9495694'
+  NEXT_PUBLIC_Y8_SERVER_URL = 'https://y8-server-jason-sprouse.fly.dev/api/v1'
+  NEXT_PUBLIC_Y8_PREMIER_URL = 'https://y8-premier-jason-sprouse.fly.dev'
+  NEXT_PUBLIC_THE_BEACH_URL = 'https://y8-beach-jason-sprouse.fly.dev'
 
 [http_service]
   internal_port = 3000

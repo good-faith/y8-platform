@@ -2,7 +2,18 @@ import type { NextAuthOptions } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import { getCsrfToken } from 'next-auth/react';
 import { SiweMessage } from 'siwe';
+import { createPublicClient, http } from 'viem';
+import { mainnet, polygon, optimism, base, sepolia, baseSepolia } from 'wagmi/chains';
 import { y8Auth, Y8User } from '../lib/y8-client';
+
+const CHAIN_RPC: Record<number, { chain: any; rpc: string }> = {
+  [mainnet.id]:     { chain: mainnet,     rpc: 'https://cloudflare-eth.com' },
+  [polygon.id]:     { chain: polygon,     rpc: 'https://polygon-rpc.com' },
+  [optimism.id]:    { chain: optimism,    rpc: 'https://mainnet.optimism.io' },
+  [base.id]:        { chain: base,        rpc: 'https://base-mainnet.public.blastapi.io' },
+  [sepolia.id]:     { chain: sepolia,     rpc: 'https://ethereum-sepolia-rpc.publicnode.com' },
+  [baseSepolia.id]: { chain: baseSepolia, rpc: 'https://sepolia.base.org' },
+};
 
 // ─── NextAuth type augmentation ───────────────────────────────────────────────
 
@@ -49,22 +60,48 @@ export const authOptions: NextAuthOptions = {
           const message   = credentials.message as string;
           const signature = credentials.signature as string;
 
-          // ── Validate signature format (0x + 130 hex chars = 132 total) ──
-          if (!signature.startsWith('0x') || signature.length !== 132) {
+          // ── Validate signature format (EOA 132 chars OR ERC-1271/6492 Smart Wallet hex) ──
+          if (!signature.startsWith('0x') || signature.length < 132 || signature.length % 2 !== 0) {
             console.error(`[auth] Invalid signature length: ${signature.length}`);
             return null;
           }
-          if (!/^0x[0-9a-fA-F]{130}$/.test(signature)) {
+          if (!/^0x[0-9a-fA-F]{130,}$/.test(signature)) {
             console.error('[auth] Signature contains invalid hex characters');
             return null;
           }
 
           // ── Step 1: verify SIWE with nonce (CSRF token) — prevents replay attacks ──
-          const siwe   = new SiweMessage(message);
-          const nonce  = await getCsrfToken({ req: { headers: (credentials as any)?._req?.headers } });
-          const result = await siwe.verify({ signature, ...(nonce ? { nonce } : {}) });
+          const siwe  = new SiweMessage(message);
+          const nonce = await getCsrfToken({ req: { headers: (credentials as any)?._req?.headers } });
 
-          if (!result.success) {
+          let verified = false;
+          if (signature.length === 132) {
+            const result = await siwe.verify({ signature, ...(nonce ? { nonce } : {}) }).catch(() => ({ success: false }));
+            verified = result.success;
+          }
+
+          // Fallback for Coinbase Smart Wallet (ERC-6492 / ERC-1271 contract signatures)
+          if (!verified) {
+            if (nonce && siwe.nonce !== nonce) {
+              console.error('[auth] SIWE nonce mismatch');
+              return null;
+            }
+            const chainEntry = CHAIN_RPC[siwe.chainId] ?? CHAIN_RPC[base.id];
+            const publicClient = createPublicClient({
+              chain: chainEntry.chain,
+              transport: http(chainEntry.rpc),
+            });
+            verified = await publicClient.verifyMessage({
+              address: siwe.address as `0x${string}`,
+              message: siwe.prepareMessage(),
+              signature: signature as `0x${string}`,
+            }).catch((err) => {
+              console.error('[auth] ERC-1271/6492 verification failed:', err);
+              return false;
+            });
+          }
+
+          if (!verified) {
             console.error('[auth] Local SIWE verification failed');
             return null;
           }

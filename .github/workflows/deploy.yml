@@ -90,7 +90,13 @@ jobs:
         uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy to Fly.io
-        run: flyctl deploy . --config y8-app/fly.toml --dockerfile docker/web.Dockerfile --strategy immediate --remote-only
+        run: |
+          flyctl deploy . \
+            --config y8-app/fly.toml \
+            --dockerfile docker/web.Dockerfile \
+            --build-arg NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID="${{ vars.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || secrets.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'b56e18d47c72ab683b10814fe9495694' }}" \
+            --strategy immediate \
+            --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 

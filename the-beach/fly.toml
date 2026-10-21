@@ -8,6 +8,8 @@ primary_region = 'sjc'
 [env]
   NODE_ENV = 'production'
   PORT = '3003'
+  Y8_APP_URL = 'https://y8-web-jason-sprouse.fly.dev'
+  Y8_SERVER_URL = 'https://y8-server-jason-sprouse.fly.dev/api/v1'
 
 [http_service]
   internal_port = 3003

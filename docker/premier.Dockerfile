@@ -14,6 +14,11 @@ RUN npm ci --legacy-peer-deps
 
 COPY y8-premier/ ./y8-premier/
 
+ARG VITE_Y8_APP_URL=https://y8-web-jason-sprouse.fly.dev
+ARG VITE_Y8_SERVER_URL=https://y8-server-jason-sprouse.fly.dev/api/v1
+ENV VITE_Y8_APP_URL=$VITE_Y8_APP_URL
+ENV VITE_Y8_SERVER_URL=$VITE_Y8_SERVER_URL
+
 WORKDIR /app/y8-premier
 RUN npm run build
 

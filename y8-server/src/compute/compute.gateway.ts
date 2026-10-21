@@ -44,7 +44,7 @@ export class WsRateLimitGuard implements CanActivate {
   }
 }
 
-@WebSocketGateway({ cors: { origin: /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/, methods: ['GET', 'POST'], credentials: true } })
+@WebSocketGateway({ cors: { origin: /^https?:\/\/((localhost|127\.0\.0\.1)(:\d+)?|y8-(web|beach|server|premier)-jason-sprouse\.fly\.dev)$/, methods: ['GET', 'POST'], credentials: true } })
 @UseGuards(WsRateLimitGuard)
 export class ComputeGateway implements OnGatewayDisconnect {
   @WebSocketServer() server: Server;

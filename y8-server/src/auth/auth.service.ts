@@ -1,6 +1,8 @@
-﻿import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
+import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { SiweMessage } from 'siwe';
+import { createPublicClient, http } from 'viem';
+import { base, baseSepolia } from 'viem/chains';
 import { NonceService } from './nonce.service';
 
 /** Supported Base chain IDs */
@@ -40,8 +42,28 @@ export class AuthService {
       if (!result.success) throw new Error('Signature invalid');
       fields = result.data;
     } catch (err) {
-      this.logger.warn(`SIWE verification failed: ${err.message}`);
-      throw new UnauthorizedException('Invalid SIWE signature');
+      // Fallback for ERC-1271 / ERC-6492 smart contract wallets (e.g. Coinbase Smart Wallet on Base)
+      if (signature?.startsWith('0x') && signature.length > 132 && BASE_CHAIN_IDS.includes(siweMsg.chainId)) {
+        const isSepolia = siweMsg.chainId === 84532;
+        const client = createPublicClient({
+          chain: isSepolia ? baseSepolia : base,
+          transport: http(isSepolia ? 'https://sepolia.base.org' : 'https://base-mainnet.public.blastapi.io'),
+        });
+        const valid = await client.verifyMessage({
+          address: siweMsg.address as `0x${string}`,
+          message: siweMsg.prepareMessage(),
+          signature: signature as `0x${string}`,
+        }).catch(() => false);
+        if (valid) {
+          fields = siweMsg;
+        } else {
+          this.logger.warn(`SIWE verification failed: ${err.message}`);
+          throw new UnauthorizedException('Invalid SIWE signature');
+        }
+      } else {
+        this.logger.warn(`SIWE verification failed: ${err.message}`);
+        throw new UnauthorizedException('Invalid SIWE signature');
+      }
     }
 
     // Enforce Base chain

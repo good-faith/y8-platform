@@ -9,6 +9,7 @@ primary_region = 'sjc'
 [env]
   NODE_ENV = 'production'
   PORT = '3001'
+  ALLOWED_ORIGINS = 'https://y8-web-jason-sprouse.fly.dev,https://y8-premier-jason-sprouse.fly.dev,https://y8-beach-jason-sprouse.fly.dev,http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:3003'
 
 [http_service]
   internal_port = 3001
