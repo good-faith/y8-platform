@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VR Task Assignments - The Beach</title>
+  <link rel="stylesheet" href="./css/premium.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    #renderCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+    }
+
+    #loadingScreen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #1e3a8a 0%, #312e81 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      transition: opacity 0.5s;
+    }
+
+    #loadingScreen.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .loader {
+      width: 60px;
+      height: 60px;
+      border: 4px solid rgba(255, 255, 255, 0.1);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    #loadingText {
+      margin-top: 20px;
+      color: white;
+      font-size: 18px;
+      font-weight: 500;
+    }
+
+    #instructions {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 15px 20px;
+      border-radius: 8px;
+      max-width: 300px;
+      font-size: 14px;
+      line-height: 1.6;
+      z-index: 10;
+    }
+
+    #instructions h3 {
+      margin: 0 0 10px 0;
+      font-size: 16px;
+      color: #60a5fa;
+    }
+
+    #instructions ul {
+      margin: 10px 0 0 20px;
+      padding: 0;
+    }
+
+    #instructions li {
+      margin: 5px 0;
+    }
+
+    #vrButton {
+      position: absolute;
+      bottom: 30px;
+      right: 30px;
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      z-index: 10;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+      transition: all 0.3s;
+    }
+
+    #vrButton:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(59, 130, 246, 0.6);
+    }
+
+    #vrButton:active {
+      transform: translateY(0);
+    }
+
+    #vrButton:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    #stats {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 10px 15px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-family: monospace;
+      z-index: 10;
+    }
+
+    .error-message {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(239, 68, 68, 0.95);
+      color: white;
+      padding: 20px 30px;
+      border-radius: 8px;
+      max-width: 400px;
+      text-align: center;
+      z-index: 1001;
+      display: none;
+    }
+
+    .error-message.show {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="renderCanvas"></canvas>
+  
+  <div id="loadingScreen">
+    <div class="loader"></div>
+    <div id="loadingText">Loading VR Task Assignments...</div>
+  </div>
+
+  <div id="instructions">
+    <h3>📋 VR Task Assignments</h3>
+    <p>Manage task assignments to your sub-PKP agents in VR.</p>
+    <ul>
+      <li><strong>Mouse:</strong> Look around</li>
+      <li><strong>Click cards:</strong> Approve/Reject tasks</li>
+      <li><strong>VR mode:</strong> Use controllers to interact</li>
+      <li><strong>Auto-refresh:</strong> Every 5 seconds</li>
+    </ul>
+  </div>
+
+  <div id="stats">
+    <div>FPS: <span id="fps">0</span></div>
+    <div>Tasks: <span id="taskCount">0</span></div>
+  </div>
+
+  <button id="vrButton">Enter VR</button>
+
+  <div id="errorMessage" class="error-message">
+    <h3>❌ Error</h3>
+    <p id="errorText"></p>
+  </div>
+
+  <script src="https://cdn.babylonjs.com/babylon.js"></script>
+  <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+  <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
+
+  <script type="module">
+    const API_BASE = window.location.origin;
+    
+    // Get main PKP from URL or localStorage
+    const urlParams = new URLSearchParams(window.location.search);
+    const mainPKP = urlParams.get('mainPKP') || localStorage.getItem('mainPKP') || 'demo-pkp';
+    
+    if (!localStorage.getItem('mainPKP')) {
+      localStorage.setItem('mainPKP', mainPKP);
+    }
+
+    // Initialize Babylon.js
+    const canvas = document.getElementById('renderCanvas');
+    const engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
+    
+    let scene;
+    let camera;
+    let vrHelper;
+    let taskUI;
+    
+    // Create scene
+    async function createScene() {
+      scene = new BABYLON.Scene(engine);
+      scene.clearColor = new BABYLON.Color4(0.02, 0.02, 0.1, 1);
+      
+      // Camera
+      camera = new BABYLON.UniversalCamera('camera', new BABYLON.Vector3(0, 1.6, -5), scene);
+      camera.setTarget(BABYLON.Vector3.Zero());
+      camera.attachControl(canvas, true);
+      
+      // Lighting
+      const light = new BABYLON.HemisphericLight('light', new BABYLON.Vector3(0, 1, 0), scene);
+      light.intensity = 0.7;
+      
+      const light2 = new BABYLON.PointLight('light2', new BABYLON.Vector3(0, 3, 0), scene);
+      light2.intensity = 0.5;
+      
+      // Environment
+      createEnvironment();
+      
+      // Initialize VR
+      vrHelper = scene.createDefaultVRExperience({
+        createDeviceOrientationCamera: false,
+        useXR: true,
+      });
+      
+      // VR button
+      const vrButton = document.getElementById('vrButton');
+      vrButton.onclick = () => {
+        if (vrHelper.xr) {
+          vrHelper.xr.baseExperience.enterXRAsync('immersive-vr', 'local-floor');
+        } else if (vrHelper.vrDeviceOrientationCamera) {
+          scene.activeCamera = vrHelper.vrDeviceOrientationCamera;
+        }
+      };
+      
+      // Initialize Task UI
+      await initializeTaskUI();
+      
+      return scene;
+    }
+
+    /**
+     * Create environment
+     */
+    function createEnvironment() {
+      // Ground
+      const ground = BABYLON.MeshBuilder.CreateGround('ground', { width: 20, height: 20 }, scene);
+      const groundMat = new BABYLON.StandardMaterial('groundMat', scene);
+      groundMat.diffuseColor = new BABYLON.Color3(0.1, 0.1, 0.15);
+      groundMat.specularColor = new BABYLON.Color3(0, 0, 0);
+      ground.material = groundMat;
+      
+      // Grid
+      const gridMat = new BABYLON.GridMaterial('gridMat', scene);
+      gridMat.majorUnitFrequency = 5;
+      gridMat.minorUnitVisibility = 0.3;
+      gridMat.gridRatio = 1;
+      gridMat.backFaceCulling = false;
+      gridMat.mainColor = new BABYLON.Color3(0.2, 0.2, 0.3);
+      gridMat.lineColor = new BABYLON.Color3(0.3, 0.5, 0.8);
+      ground.material = gridMat;
+      
+      // Skybox
+      const skybox = BABYLON.MeshBuilder.CreateBox('skybox', { size: 100 }, scene);
+      const skyboxMat = new BABYLON.StandardMaterial('skyboxMat', scene);
+      skyboxMat.backFaceCulling = false;
+      skyboxMat.disableLighting = true;
+      skyboxMat.emissiveColor = new BABYLON.Color3(0.05, 0.05, 0.15);
+      skybox.material = skyboxMat;
+    }
+
+    /**
+     * Initialize Task Assignment UI
+     */
+    async function initializeTaskUI() {
+      try {
+        // Load VRTaskAssignmentUI class (in production, this would be imported)
+        taskUI = await createTaskUI(scene, mainPKP);
+        
+        document.getElementById('loadingText').textContent = 'Ready!';
+        
+        setTimeout(() => {
+          document.getElementById('loadingScreen').classList.add('hidden');
+        }, 500);
+      } catch (error) {
+        console.error('Failed to initialize Task UI:', error);
+        showError('Failed to load task assignments. Please refresh.');
+      }
+    }
+
+    /**
+     * Create Task UI (inline version)
+     */
+    async function createTaskUI(scene, mainPKP) {
+      const ui = {
+        mainPanel: null,
+        assignmentPanels: new Map(),
+        pendingAssignments: [],
+        stats: null,
+      };
+      
+      // Create main dashboard
+      ui.mainPanel = new BABYLON.TransformNode('taskDashboard', scene);
+      ui.mainPanel.position = new BABYLON.Vector3(0, 1.6, 3);
+      
+      // Background panel
+      const background = BABYLON.MeshBuilder.CreatePlane('dashboardBG', { 
+        width: 4, 
+        height: 2.5 
+      }, scene);
+      background.parent = ui.mainPanel;
+      
+      const bgMat = new BABYLON.StandardMaterial('dashboardBGMat', scene);
+      bgMat.emissiveColor = new BABYLON.Color3(0.05, 0.05, 0.1);
+      bgMat.alpha = 0.9;
+      background.material = bgMat;
+      
+      // Title
+      createTextPanel('📋 Task Assignments', new BABYLON.Vector3(0, 1, 0.01), 60, ui.mainPanel);
+      
+      // Load and render
+      await loadPendingAssignments(ui, mainPKP);
+      renderAssignments(ui, mainPKP);
+      
+      // Auto-refresh
+      setInterval(async () => {
+        await loadPendingAssignments(ui, mainPKP);
+        renderAssignments(ui, mainPKP);
+      }, 5000);
+      
+      return ui;
+    }
+
+    /**
+     * Create text panel
+     */
+    function createTextPanel(text, position, fontSize, parent) {
+      const panel = BABYLON.MeshBuilder.CreatePlane('textPanel', { 
+        width: 3.5, 
+        height: 0.4 
+      }, scene);
+      panel.parent = parent;
+      panel.position = position;
+      
+      const texture = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(panel);
+      
+      const textBlock = new BABYLON.GUI.TextBlock();
+      textBlock.text = text;
+      textBlock.color = 'white';
+      textBlock.fontSize = fontSize;
+      textBlock.fontWeight = 'bold';
+      
+      texture.addControl(textBlock);
+      
+      return panel;
+    }
+
+    /**
+     * Load pending assignments
+     */
+    async function loadPendingAssignments(ui, mainPKP) {
+      try {
+        const response = await fetch(
+          `${API_BASE}/npe/tasks/assignments/pending?mainPKP=${mainPKP}`
+        );
+        ui.pendingAssignments = await response.json();
+        
+        document.getElementById('taskCount').textContent = ui.pendingAssignments.length;
+      } catch (error) {
+        console.error('Failed to load pending assignments:', error);
+      }
+    }
+
+    /**
+     * Render assignments
+     */
+    function renderAssignments(ui, mainPKP) {
+      // Clear existing panels
+      ui.assignmentPanels.forEach(panel => panel.dispose());
+      ui.assignmentPanels.clear();
+      
+      if (ui.pendingAssignments.length === 0) {
+        createTextPanel('✅ No pending assignments', new BABYLON.Vector3(0, -0.5, 0.01), 30, ui.mainPanel);
+        return;
+      }
+      
+      // Create assignment cards
+      const cardsPerRow = 2;
+      const cardWidth = 1.6;
+      const cardHeight = 1.2;
+      const spacing = 0.2;
+      
+      ui.pendingAssignments.forEach((assignment, index) => {
+        const row = Math.floor(index / cardsPerRow);
+        const col = index % cardsPerRow;
+        
+        const x = (col - (cardsPerRow - 1) / 2) * (cardWidth + spacing);
+        const y = -0.3 - row * (cardHeight + spacing);
+        
+        createAssignmentCard(ui, assignment, new BABYLON.Vector3(x, y, 0.01), mainPKP);
+      });
+    }
+
+    /**
+     * Create assignment card
+     */
+    function createAssignmentCard(ui, assignment, position, mainPKP) {
+      const cardContainer = new BABYLON.TransformNode(`assignment_${assignment.id}`, scene);
+      cardContainer.parent = ui.mainPanel;
+      cardContainer.position = position;
+      
+      // Card background
+      const card = BABYLON.MeshBuilder.CreatePlane('card', { 
+        width: 1.5, 
+        height: 1.1 
+      }, scene);
+      card.parent = cardContainer;
+      
+      const cardMat = new BABYLON.StandardMaterial('cardMat', scene);
+      cardMat.emissiveColor = new BABYLON.Color3(0.15, 0.1, 0.05);
+      cardMat.alpha = 0.95;
+      card.material = cardMat;
+      
+      // Task info
+      const texture = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(card, 512, 512);
+      
+      const titleText = new BABYLON.GUI.TextBlock();
+      titleText.text = assignment.metadata.taskTitle;
+      titleText.color = 'white';
+      titleText.fontSize = 24;
+      titleText.fontWeight = 'bold';
+      titleText.textWrapping = true;
+      titleText.top = -180;
+      titleText.height = '60px';
+      texture.addControl(titleText);
+      
+      const idText = new BABYLON.GUI.TextBlock();
+      idText.text = `Task #${assignment.taskId}`;
+      idText.color = 'rgba(255,255,255,0.6)';
+      idText.fontSize = 16;
+      idText.top = -130;
+      idText.height = '30px';
+      texture.addControl(idText);
+      
+      const priorityText = new BABYLON.GUI.TextBlock();
+      priorityText.text = `Priority: ${assignment.metadata.taskPriority.toUpperCase()}`;
+      priorityText.color = getPriorityColor(assignment.metadata.taskPriority);
+      priorityText.fontSize = 18;
+      priorityText.fontWeight = 'bold';
+      priorityText.top = -90;
+      priorityText.height = '30px';
+      texture.addControl(priorityText);
+      
+      // Approve button
+      createButton(
+        '✅ Approve',
+        new BABYLON.Vector3(0, -0.4, 0.02),
+        new BABYLON.Color3(0.1, 0.7, 0.3),
+        () => approveAssignment(ui, assignment.id, mainPKP),
+        cardContainer
+      );
+      
+      // Reject button
+      createButton(
+        '❌ Reject',
+        new BABYLON.Vector3(0, -0.5, 0.02),
+        new BABYLON.Color3(0.9, 0.2, 0.2),
+        () => rejectAssignment(ui, assignment.id, mainPKP),
+        cardContainer
+      );
+      
+      ui.assignmentPanels.set(assignment.id, cardContainer);
+    }
+
+    /**
+     * Create button
+     */
+    function createButton(label, position, color, onClick, parent) {
+      const button = BABYLON.MeshBuilder.CreatePlane('button', { 
+        width: 1.3, 
+        height: 0.15 
+      }, scene);
+      button.parent = parent;
+      button.position = position;
+      
+      const buttonMat = new BABYLON.StandardMaterial('buttonMat', scene);
+      buttonMat.emissiveColor = color;
+      button.material = buttonMat;
+      
+      const texture = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(button);
+      const text = new BABYLON.GUI.TextBlock();
+      text.text = label;
+      text.color = 'white';
+      text.fontSize = 32;
+      text.fontWeight = 'bold';
+      texture.addControl(text);
+      
+      button.actionManager = new BABYLON.ActionManager(scene);
+      button.actionManager.registerAction(
+        new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger, onClick)
+      );
+      
+      return button;
+    }
+
+    /**
+     * Get priority color
+     */
+    function getPriorityColor(priority) {
+      const colors = {
+        high: '#ef4444',
+        medium: '#f59e0b',
+        low: '#3b82f6',
+      };
+      return colors[priority.toLowerCase()] || 'white';
+    }
+
+    /**
+     * Approve assignment
+     */
+    async function approveAssignment(ui, requestId, mainPKP) {
+      try {
+        const response = await fetch(
+          `${API_BASE}/npe/tasks/assignments/${requestId}/approve`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mainPKP }),
+          }
+        );
+        
+        if (!response.ok) throw new Error('Failed to approve');
+        
+        await loadPendingAssignments(ui, mainPKP);
+        renderAssignments(ui, mainPKP);
+      } catch (error) {
+        console.error('Approval error:', error);
+        showError('Failed to approve assignment');
+      }
+    }
+
+    /**
+     * Reject assignment
+     */
+    async function rejectAssignment(ui, requestId, mainPKP) {
+      try {
+        const response = await fetch(
+          `${API_BASE}/npe/tasks/assignments/${requestId}/reject`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mainPKP }),
+          }
+        );
+        
+        if (!response.ok) throw new Error('Failed to reject');
+        
+        await loadPendingAssignments(ui, mainPKP);
+        renderAssignments(ui, mainPKP);
+      } catch (error) {
+        console.error('Rejection error:', error);
+        showError('Failed to reject assignment');
+      }
+    }
+
+    /**
+     * Show error message
+     */
+    function showError(message) {
+      const errorDiv = document.getElementById('errorMessage');
+      const errorText = document.getElementById('errorText');
+      errorText.textContent = message;
+      errorDiv.classList.add('show');
+      
+      setTimeout(() => {
+        errorDiv.classList.remove('show');
+      }, 5000);
+    }
+
+    // Initialize scene
+    createScene().then(() => {
+      // Render loop
+      engine.runRenderLoop(() => {
+        scene.render();
+        
+        // Update FPS
+        document.getElementById('fps').textContent = Math.round(engine.getFps());
+      });
+      
+      // Resize
+      window.addEventListener('resize', () => {
+        engine.resize();
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PKP Live Dashboard - Real-Time Task Monitoring</title>
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <link rel="stylesheet" href="./css/premium.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #fff;
+    }
+
+    .dashboard {
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .header h1 {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .header .subtitle {
+      opacity: 0.9;
+      font-size: 1.1em;
+    }
+
+    .connection-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 15px;
+      padding: 8px 20px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 20px;
+      font-size: 0.9em;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #10b981;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+
+    .stat-card {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      padding: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      transition: transform 0.2s;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-5px);
+    }
+
+    .stat-label {
+      font-size: 0.9em;
+      opacity: 0.8;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 2.5em;
+      font-weight: bold;
+    }
+
+    .main-content {
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      gap: 20px;
+    }
+
+    @media (max-width: 1200px) {
+      .main-content {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .section {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 25px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: 1.5em;
+      font-weight: 600;
+    }
+
+    .agents-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 15px;
+    }
+
+    .agent-card {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 15px;
+      border: 2px solid transparent;
+      transition: all 0.3s;
+      cursor: pointer;
+    }
+
+    .agent-card:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .agent-card.working {
+      border-color: #fbbf24;
+      animation: working-pulse 1.5s infinite;
+    }
+
+    @keyframes working-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.7); }
+      50% { box-shadow: 0 0 0 10px rgba(251, 191, 36, 0); }
+    }
+
+    .agent-card.completed {
+      border-color: #10b981;
+    }
+
+    .agent-emoji {
+      font-size: 2.5em;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    .agent-name {
+      font-weight: 600;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .agent-stats {
+      font-size: 0.85em;
+      opacity: 0.9;
+      text-align: center;
+    }
+
+    .task-list {
+      max-height: 600px;
+      overflow-y: auto;
+    }
+
+    .task-card {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 12px;
+      border-left: 4px solid #3b82f6;
+      transition: all 0.3s;
+    }
+
+    .task-card.in_progress {
+      border-left-color: #fbbf24;
+      background: rgba(251, 191, 36, 0.1);
+    }
+
+    .task-card.completed {
+      border-left-color: #10b981;
+      background: rgba(16, 185, 129, 0.1);
+    }
+
+    .task-card.failed {
+      border-left-color: #ef4444;
+      background: rgba(239, 68, 68, 0.1);
+    }
+
+    .task-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 10px;
+    }
+
+    .task-title {
+      font-weight: 600;
+      font-size: 1.05em;
+    }
+
+    .task-status {
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.8em;
+      background: rgba(255, 255, 255, 0.2);
+      white-space: nowrap;
+    }
+
+    .task-meta {
+      font-size: 0.85em;
+      opacity: 0.8;
+      margin-bottom: 10px;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      transition: width 0.5s ease;
+      border-radius: 4px;
+    }
+
+    .task-output {
+      margin-top: 10px;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85em;
+      max-height: 100px;
+      overflow-y: auto;
+    }
+
+    .task-output-line {
+      margin: 3px 0;
+      opacity: 0.9;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #10b981, #059669);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(5px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border-radius: 20px;
+      padding: 30px;
+      max-width: 500px;
+      width: 90%;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .modal-header {
+      font-size: 1.5em;
+      margin-bottom: 20px;
+      font-weight: 600;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    .form-label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+    }
+
+    .form-input,
+    .form-select,
+    .form-textarea {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      font-size: 1em;
+    }
+
+    .form-textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .form-input::placeholder,
+    .form-textarea::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      opacity: 0.6;
+    }
+
+    .empty-state-icon {
+      font-size: 3em;
+      margin-bottom: 15px;
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.5);
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Header -->
+    <div class="header">
+      <h1>🤖 PKP Live Dashboard</h1>
+      <div class="subtitle">Real-Time Agent Task Monitoring</div>
+      <div class="connection-status">
+        <div class="status-dot"></div>
+        <span id="connection-text">Connected to the-beach</span>
+      </div>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total Tasks</div>
+        <div class="stat-value" id="stat-total-tasks">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">In Progress</div>
+        <div class="stat-value" id="stat-in-progress">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Completed</div>
+        <div class="stat-value" id="stat-completed">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Active Agents</div>
+        <div class="stat-value" id="stat-active-agents">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Success Rate</div>
+        <div class="stat-value" id="stat-success-rate">100%</div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Tasks Section -->
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">📋 Active Tasks</div>
+          <div class="controls">
+            <button class="btn btn-success" onclick="openCreateTaskModal()">+ Create Task</button>
+            <button class="btn btn-danger" onclick="clearCompleted()">Clear Completed</button>
+          </div>
+        </div>
+        <div class="task-list" id="task-list">
+          <div class="empty-state">
+            <div class="empty-state-icon">📭</div>
+            <div>No active tasks. Create a task to get started!</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Agents Section -->
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">🤖 PKP Agents</div>
+        </div>
+        <div class="agents-grid" id="agents-grid">
+          <!-- Agents will be populated here -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Task Modal -->
+  <div class="modal" id="create-task-modal">
+    <div class="modal-content">
+      <div class="modal-header">Create New Task</div>
+      <form id="create-task-form" onsubmit="createTask(event)">
+        <div class="form-group">
+          <label class="form-label">Task Title</label>
+          <input type="text" class="form-input" id="task-title" placeholder="e.g., Run E2E tests" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea class="form-textarea" id="task-description" placeholder="Detailed task description..." required></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Agent Type</label>
+          <select class="form-select" id="task-agent-type" required>
+            <option value="encryption">🔒 Redis Encryptor</option>
+            <option value="testing">✅ Test Runner</option>
+            <option value="review">📝 Code Reviewer</option>
+            <option value="metrics">📊 Metrics Collector</option>
+            <option value="security">🛡️ Security Auditor</option>
+            <option value="deployment">🚀 Deployer</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Repository</label>
+          <select class="form-select" id="task-repository" required>
+            <option value="the-beach">the-beach (Backend)</option>
+            <option value="y8-app">y8-app (Frontend)</option>
+            <option value="both">Both Repositories</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Priority</label>
+          <select class="form-select" id="task-priority" required>
+            <option value="low">🟢 Low</option>
+            <option value="medium" selected>🟡 Medium</option>
+            <option value="high">🔴 High</option>
+          </select>
+        </div>
+        <div class="controls">
+          <button type="submit" class="btn btn-primary">Create Task</button>
+          <button type="button" class="btn" onclick="closeCreateTaskModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const socket = io('http://localhost:3000/pkp-live');
+
+    let agents = new Map();
+    let tasks = new Map();
+
+    // Socket event handlers
+    socket.on('connect', () => {
+      console.log('Connected to PKP Live server');
+      document.getElementById('connection-text').textContent = 'Connected to the-beach';
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Disconnected from server');
+      document.getElementById('connection-text').textContent = 'Disconnected';
+    });
+
+    socket.on('initial-state', (data) => {
+      console.log('Received initial state:', data);
+      data.agents.forEach(agent => agents.set(agent.id, agent));
+      data.tasks.forEach(task => tasks.set(task.id, task));
+      renderAgents();
+      renderTasks();
+      updateStats();
+    });
+
+    socket.on('task-created', (task) => {
+      console.log('Task created:', task);
+      tasks.set(task.id, task);
+      renderTasks();
+      updateStats();
+    });
+
+    socket.on('task-assigned', (data) => {
+      console.log('Task assigned:', data);
+      tasks.set(data.task.id, data.task);
+      agents.set(data.agent.id, data.agent);
+      renderTasks();
+      renderAgents();
+      updateStats();
+    });
+
+    socket.on('task-started', (data) => {
+      tasks.set(data.task.id, data.task);
+      renderTasks();
+      updateStats();
+    });
+
+    socket.on('task-progress', (data) => {
+      const task = tasks.get(data.taskId);
+      if (task) {
+        task.progress = data.progress;
+        task.output = data.output;
+        renderTasks();
+      }
+    });
+
+    socket.on('task-completed', (data) => {
+      console.log('Task completed:', data);
+      tasks.set(data.task.id, data.task);
+      agents.set(data.agent.id, data.agent);
+      renderTasks();
+      renderAgents();
+      updateStats();
+    });
+
+    socket.on('tasks-cleared', (data) => {
+      console.log('Tasks cleared:', data);
+      socket.emit('get-dashboard', {}, (response) => {
+        tasks.clear();
+        response.tasks.forEach(task => tasks.set(task.id, task));
+        renderTasks();
+        updateStats();
+      });
+    });
+
+    // UI Functions
+    function renderAgents() {
+      const grid = document.getElementById('agents-grid');
+      grid.innerHTML = '';
+
+      agents.forEach(agent => {
+        const statusClass = agent.status === 'working' ? 'working' : agent.status === 'completed' ? 'completed' : '';
+        const card = document.createElement('div');
+        card.className = `agent-card ${statusClass}`;
+        card.onclick = () => assignTaskToAgent(agent.id);
+        card.innerHTML = `
+          <div class="agent-emoji">${agent.emoji}</div>
+          <div class="agent-name">${agent.name}</div>
+          <div class="agent-stats">
+            Status: ${agent.status}<br>
+            Completed: ${agent.tasksCompleted}/${agent.totalTasks}<br>
+            Success: ${agent.successRate}%
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function renderTasks() {
+      const list = document.getElementById('task-list');
+      const taskArray = Array.from(tasks.values()).sort((a, b) => b.id - a.id);
+
+      if (taskArray.length === 0) {
+        list.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">📭</div>
+            <div>No active tasks. Create a task to get started!</div>
+          </div>
+        `;
+        return;
+      }
+
+      list.innerHTML = taskArray.map(task => `
+        <div class="task-card ${task.status}">
+          <div class="task-header">
+            <div class="task-title">${task.title}</div>
+            <div class="task-status">${task.status.replace('_', ' ').toUpperCase()}</div>
+          </div>
+          <div class="task-meta">
+            ${task.assignedAgent || 'Unassigned'} • ${task.repository} • ${task.priority.toUpperCase()} priority
+          </div>
+          ${task.status === 'in_progress' || task.status === 'assigned' ? `
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: ${task.progress}%"></div>
+            </div>
+            <div style="font-size: 0.85em; text-align: center;">${task.progress}%</div>
+          ` : ''}
+          ${task.output && task.output.length > 0 ? `
+            <div class="task-output">
+              ${task.output.slice(-3).map(line => `<div class="task-output-line">${line}</div>`).join('')}
+            </div>
+          ` : ''}
+          ${task.status === 'idle' ? `
+            <button class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="autoAssignTask(${task.id})">
+              Auto-Assign
+            </button>
+          ` : ''}
+        </div>
+      `).join('');
+    }
+
+    function updateStats() {
+      const taskArray = Array.from(tasks.values());
+      const agentArray = Array.from(agents.values());
+
+      document.getElementById('stat-total-tasks').textContent = taskArray.length;
+      document.getElementById('stat-in-progress').textContent = taskArray.filter(t => t.status === 'in_progress').length;
+      document.getElementById('stat-completed').textContent = taskArray.filter(t => t.status === 'completed').length;
+      document.getElementById('stat-active-agents').textContent = agentArray.filter(a => a.status === 'working').length;
+      
+      const avgSuccess = agentArray.length > 0
+        ? Math.round(agentArray.reduce((sum, a) => sum + a.successRate, 0) / agentArray.length)
+        : 100;
+      document.getElementById('stat-success-rate').textContent = avgSuccess + '%';
+    }
+
+    function openCreateTaskModal() {
+      document.getElementById('create-task-modal').classList.add('active');
+    }
+
+    function closeCreateTaskModal() {
+      document.getElementById('create-task-modal').classList.remove('active');
+      document.getElementById('create-task-form').reset();
+    }
+
+    function createTask(event) {
+      event.preventDefault();
+
+      const taskData = {
+        title: document.getElementById('task-title').value,
+        description: document.getElementById('task-description').value,
+        agentType: document.getElementById('task-agent-type').value,
+        repository: document.getElementById('task-repository').value,
+        priority: document.getElementById('task-priority').value,
+      };
+
+      socket.emit('create-task', taskData, (response) => {
+        console.log('Task created:', response);
+        closeCreateTaskModal();
+      });
+    }
+
+    function autoAssignTask(taskId) {
+      const task = tasks.get(taskId);
+      if (!task) return;
+
+      // Find matching agent
+      const matchingAgents = Array.from(agents.values()).filter(a => 
+        a.type === task.agentType && a.status === 'idle'
+      );
+
+      if (matchingAgents.length === 0) {
+        alert('No idle agents available for this task type');
+        return;
+      }
+
+      const agent = matchingAgents[0];
+      socket.emit('assign-task', { taskId, agentId: agent.id });
+    }
+
+    function assignTaskToAgent(agentId) {
+      const agent = agents.get(agentId);
+      if (!agent || agent.status === 'working') return;
+
+      // Find idle task matching this agent type
+      const matchingTasks = Array.from(tasks.values()).filter(t =>
+        t.agentType === agent.type && t.status === 'idle'
+      );
+
+      if (matchingTasks.length === 0) {
+        alert('No available tasks for this agent type');
+        return;
+      }
+
+      const task = matchingTasks[0];
+      socket.emit('assign-task', { taskId: task.id, agentId });
+    }
+
+    function clearCompleted() {
+      if (!confirm('Clear all completed and failed tasks?')) return;
+      socket.emit('clear-completed');
+    }
+
+    // Request initial dashboard state
+    socket.emit('get-dashboard');
+  </script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+{
+  "name": "y8-platform",
+  "version": "1.0.0",
+  "description": "Y8 Platform monorepo — wallet, XR, AI agents on Base",
+  "private": true,
+  "packageManager": "npm@10.8.2",
+  "workspaces": [
+    "y8-app",
+    "y8-server",
+    "y8-premier",
+    "the-beach",
+    "packages/*",
+    "e2e"
+  ],
+  "scripts": {
+    "dev": "node dev.js",
+    "stage": "powershell -ExecutionPolicy Bypass -File stage.ps1",
+    "deploy": "powershell -ExecutionPolicy Bypass -File stage-fly.ps1",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "test": "turbo test"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3",
+    "turbo": "^2.0.0"
+  },
+  "dependencies": {
+    "mermaid": "^11.16.0"
+  }
+}

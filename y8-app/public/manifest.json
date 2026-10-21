@@ -1,0 +1,21 @@
+{
+  "name": "Y8 Platform",
+  "short_name": "Y8",
+  "description": "Y8 Lifestyle Services — your digital wallet, agent marketplace, and lifestyle hub.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#f5c518",
+  "categories": ["finance", "lifestyle", "productivity"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Space",    "url": "/space",            "description": "Y8 Space" },
+    { "name": "Settings", "url": "/space/settings",   "description": "On-chain settings" },
+    { "name": "Entropy",  "url": "/space/entropy",    "description": "Proof of Entropy" }
+  ]
+}

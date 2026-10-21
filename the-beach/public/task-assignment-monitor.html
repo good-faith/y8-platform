@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task Assignment Monitor - The Beach</title>
+  <link rel="stylesheet" href="./css/premium.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .header {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+
+    .header h1 {
+      color: #333;
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+
+    .header p {
+      color: #666;
+      font-size: 14px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-card .label {
+      font-size: 12px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .stat-card .value {
+      font-size: 32px;
+      font-weight: bold;
+      color: #333;
+    }
+
+    .stat-card .limit {
+      font-size: 14px;
+      color: #999;
+      margin-top: 4px;
+    }
+
+    .stat-card.warning .value {
+      color: #f59e0b;
+    }
+
+    .stat-card.danger .value {
+      color: #ef4444;
+    }
+
+    .main-content {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 24px;
+    }
+
+    .panel {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+
+    .panel h2 {
+      color: #333;
+      font-size: 20px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .badge {
+      background: #667eea;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .badge.warning {
+      background: #f59e0b;
+    }
+
+    .task-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-height: 600px;
+      overflow-y: auto;
+    }
+
+    .task-card {
+      background: #f9fafb;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 16px;
+      transition: all 0.2s;
+    }
+
+    .task-card:hover {
+      border-color: #667eea;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+    }
+
+    .task-card.pending {
+      border-color: #f59e0b;
+      background: #fffbeb;
+    }
+
+    .task-card.approved {
+      border-color: #10b981;
+      background: #ecfdf5;
+    }
+
+    .task-card.rejected {
+      border-color: #ef4444;
+      background: #fef2f2;
+    }
+
+    .task-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 12px;
+    }
+
+    .task-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 4px;
+    }
+
+    .task-id {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .priority-badge {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .priority-high {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .priority-medium {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .priority-low {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .task-meta {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+      font-size: 13px;
+      color: #666;
+    }
+
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .task-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    button.primary {
+      background: #10b981;
+      color: white;
+    }
+
+    button.primary:hover {
+      background: #059669;
+    }
+
+    button.secondary {
+      background: #ef4444;
+      color: white;
+    }
+
+    button.secondary:hover {
+      background: #dc2626;
+    }
+
+    button.tertiary {
+      background: #6b7280;
+      color: white;
+    }
+
+    button.tertiary:hover {
+      background: #4b5563;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: #9ca3af;
+    }
+
+    .empty-state .icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .tier-info {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+
+    .tier-name {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .tier-desc {
+      font-size: 13px;
+      opacity: 0.9;
+    }
+
+    .upgrade-prompt {
+      background: #fffbeb;
+      border: 2px solid #f59e0b;
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 16px;
+    }
+
+    .upgrade-prompt h3 {
+      color: #92400e;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+
+    .upgrade-prompt p {
+      color: #78350f;
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+
+    .upgrade-prompt button {
+      background: #f59e0b;
+      color: white;
+      width: 100%;
+    }
+
+    .upgrade-prompt button:hover {
+      background: #d97706;
+    }
+
+    .sub-pkp-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .sub-pkp-item {
+      background: #f9fafb;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+
+    .sub-pkp-name {
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 4px;
+    }
+
+    .sub-pkp-address {
+      font-family: monospace;
+      color: #666;
+      font-size: 11px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 48px;
+      color: #666;
+    }
+
+    .loading .spinner {
+      border: 3px solid #f3f4f6;
+      border-top: 3px solid #667eea;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .timestamp {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-top: 8px;
+    }
+
+    @media (max-width: 968px) {
+      .main-content {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📋 Task Assignment Monitor</h1>
+      <p>Authorize and manage task assignments to your sub-PKP agents</p>
+    </div>
+
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <p>Loading your assignments...</p>
+    </div>
+
+    <div id="content" style="display: none;">
+      <!-- Stats Grid -->
+      <div class="stats-grid">
+        <div class="stat-card" id="stat-pending">
+          <div class="label">Pending Approval</div>
+          <div class="value">-</div>
+          <div class="limit">of <span id="limit-pending">-</span> max</div>
+        </div>
+        <div class="stat-card" id="stat-active">
+          <div class="label">Active Tasks</div>
+          <div class="value">-</div>
+          <div class="limit">across all sub-PKPs</div>
+        </div>
+        <div class="stat-card" id="stat-subpkps">
+          <div class="label">Sub-PKPs</div>
+          <div class="value">-</div>
+          <div class="limit">of <span id="limit-subpkps">-</span> max</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">This Month</div>
+          <div class="value" id="stat-month">-</div>
+          <div class="limit">assignments created</div>
+        </div>
+      </div>
+
+      <div class="main-content">
+        <!-- Pending Assignments -->
+        <div class="panel">
+          <h2>
+            Pending Assignments
+            <span class="badge warning" id="pending-count">0</span>
+          </h2>
+          <div id="pending-list" class="task-list">
+            <!-- Populated by JavaScript -->
+          </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div>
+          <!-- Tier Info -->
+          <div class="panel">
+            <div id="tier-info" class="tier-info">
+              <div class="tier-name">Loading...</div>
+              <div class="tier-desc">Getting your tier information...</div>
+            </div>
+            
+            <h2>Your Sub-PKPs</h2>
+            <div id="subpkp-list" class="sub-pkp-list">
+              <!-- Populated by JavaScript -->
+            </div>
+          </div>
+
+          <!-- Upgrade Prompt (for Freemium) -->
+          <div id="upgrade-prompt" class="panel" style="display: none;">
+            <div class="upgrade-prompt">
+              <h3>🚀 Upgrade for More Power</h3>
+              <p>Get bulk assignments, auto-approval, and more with Basic or Professional tiers.</p>
+              <button onclick="window.location.href='/pricing.html'">
+                View Pricing Plans
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Configuration
+    const API_BASE = window.location.origin;
+    const MAIN_PKP = localStorage.getItem('mainPKP') || '0x1234...'; // From auth
+    const REFRESH_INTERVAL = 5000; // 5 seconds
+
+    // State
+    let stats = null;
+    let pendingAssignments = [];
+    let subPKPs = [];
+
+    // Initialize
+    async function init() {
+      try {
+        await loadUserStats();
+        await loadPendingAssignments();
+        await loadSubPKPs();
+        
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('content').style.display = 'block';
+
+        // Auto-refresh
+        setInterval(async () => {
+          await loadPendingAssignments();
+        }, REFRESH_INTERVAL);
+      } catch (error) {
+        console.error('Initialization error:', error);
+        document.getElementById('loading').innerHTML = `
+          <div class="spinner"></div>
+          <p style="color: #ef4444;">Error loading data. Please refresh the page.</p>
+        `;
+      }
+    }
+
+    // Load user stats
+    async function loadUserStats() {
+      const response = await fetch(`${API_BASE}/npe/tasks/assignments/stats/${MAIN_PKP}`);
+      stats = await response.json();
+
+      // Update stats display
+      updateStatsDisplay();
+    }
+
+    // Update stats display
+    function updateStatsDisplay() {
+      if (!stats) return;
+
+      const { tier, quota, usage } = stats;
+
+      // Tier info
+      const tierNames = {
+        freemium: 'Freemium',
+        basic: 'Basic',
+        premium: 'Professional'
+      };
+      
+      const tierDescs = {
+        freemium: 'Manual approval required for task assignments',
+        basic: 'Auto-approval enabled, bulk assignments available',
+        premium: 'Unlimited capacity with priority support'
+      };
+
+      document.getElementById('tier-info').innerHTML = `
+        <div class="tier-name">${tierNames[tier] || tier}</div>
+        <div class="tier-desc">${tierDescs[tier] || ''}</div>
+      `;
+
+      // Stats
+      const pendingValue = document.querySelector('#stat-pending .value');
+      const pendingCard = document.getElementById('stat-pending');
+      pendingValue.textContent = usage.pendingTasks;
+      document.getElementById('limit-pending').textContent = quota.maxPendingTasks === Infinity ? '∞' : quota.maxPendingTasks;
+      
+      if (usage.pendingTasks >= quota.maxPendingTasks * 0.8) {
+        pendingCard.classList.add('warning');
+      }
+      if (usage.pendingTasks >= quota.maxPendingTasks) {
+        pendingCard.classList.add('danger');
+      }
+
+      document.querySelector('#stat-active .value').textContent = usage.activeTasks;
+      
+      const subpkpValue = document.querySelector('#stat-subpkps .value');
+      const subpkpCard = document.getElementById('stat-subpkps');
+      subpkpValue.textContent = usage.subPKPCount;
+      document.getElementById('limit-subpkps').textContent = quota.maxSubPKPs === Infinity ? '∞' : quota.maxSubPKPs;
+      
+      if (usage.subPKPCount >= quota.maxSubPKPs * 0.8) {
+        subpkpCard.classList.add('warning');
+      }
+
+      document.getElementById('stat-month').textContent = usage.assignmentsThisMonth;
+
+      // Show upgrade prompt for freemium
+      if (tier === 'freemium') {
+        document.getElementById('upgrade-prompt').style.display = 'block';
+      }
+    }
+
+    // Load pending assignments
+    async function loadPendingAssignments() {
+      const response = await fetch(`${API_BASE}/npe/tasks/assignments/pending?mainPKP=${MAIN_PKP}`);
+      pendingAssignments = await response.json();
+
+      renderPendingAssignments();
+    }
+
+    // Render pending assignments
+    function renderPendingAssignments() {
+      const container = document.getElementById('pending-list');
+      document.getElementById('pending-count').textContent = pendingAssignments.length;
+
+      if (pendingAssignments.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="icon">✅</div>
+            <p>No pending assignments</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = pendingAssignments.map(assignment => `
+        <div class="task-card pending">
+          <div class="task-header">
+            <div>
+              <div class="task-title">${assignment.metadata.taskTitle}</div>
+              <div class="task-id">Task #${assignment.taskId} • Request ${assignment.id.slice(0, 8)}...</div>
+            </div>
+            <span class="priority-badge priority-${assignment.metadata.taskPriority}">
+              ${assignment.metadata.taskPriority}
+            </span>
+          </div>
+          
+          <div class="task-meta">
+            <div class="meta-item">
+              <span>🤖</span>
+              <span>${assignment.metadata.agentType}</span>
+            </div>
+            <div class="meta-item">
+              <span>⏱️</span>
+              <span>${assignment.metadata.estimatedHours}h estimated</span>
+            </div>
+            <div class="meta-item">
+              <span>📍</span>
+              <span>Sub-PKP: ${assignment.subPKP.slice(0, 10)}...</span>
+            </div>
+            <div class="meta-item">
+              <span>📅</span>
+              <span>${new Date(assignment.requestedAt).toLocaleString()}</span>
+            </div>
+          </div>
+
+          <div class="timestamp">
+            Expires: ${new Date(assignment.expiresAt).toLocaleString()}
+          </div>
+
+          <div class="task-actions">
+            <button class="primary" onclick="approveAssignment('${assignment.id}')">
+              ✅ Approve
+            </button>
+            <button class="secondary" onclick="rejectAssignment('${assignment.id}')">
+              ❌ Reject
+            </button>
+            <button class="tertiary" onclick="viewTaskDetails(${assignment.taskId})">
+              👁️ Details
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Load sub-PKPs
+    async function loadSubPKPs() {
+      // This would call PKP hierarchy endpoint
+      // For now, using mock data
+      subPKPs = [
+        { address: '0xabcd...1234', purpose: 'Development', status: 'active' },
+        { address: '0xefgh...5678', purpose: 'Testing', status: 'active' },
+      ];
+
+      renderSubPKPs();
+    }
+
+    // Render sub-PKPs
+    function renderSubPKPs() {
+      const container = document.getElementById('subpkp-list');
+      
+      if (subPKPs.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state" style="padding: 24px;">
+            <p>No sub-PKPs created yet</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = subPKPs.map(pkp => `
+        <div class="sub-pkp-item">
+          <div class="sub-pkp-name">${pkp.purpose}</div>
+          <div class="sub-pkp-address">${pkp.address}</div>
+        </div>
+      `).join('');
+    }
+
+    // Approve assignment
+    async function approveAssignment(requestId) {
+      try {
+        const response = await fetch(`${API_BASE}/npe/tasks/assignments/${requestId}/approve`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mainPKP: MAIN_PKP }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to approve assignment');
+        }
+
+        await loadPendingAssignments();
+        await loadUserStats();
+        
+        alert('✅ Task assignment approved!');
+      } catch (error) {
+        console.error('Approval error:', error);
+        alert('❌ Failed to approve assignment. Please try again.');
+      }
+    }
+
+    // Reject assignment
+    async function rejectAssignment(requestId) {
+      const reason = prompt('Optional: Why are you rejecting this assignment?');
+      
+      try {
+        const response = await fetch(`${API_BASE}/npe/tasks/assignments/${requestId}/reject`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mainPKP: MAIN_PKP, reason }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to reject assignment');
+        }
+
+        await loadPendingAssignments();
+        await loadUserStats();
+        
+        alert('❌ Task assignment rejected.');
+      } catch (error) {
+        console.error('Rejection error:', error);
+        alert('Failed to reject assignment. Please try again.');
+      }
+    }
+
+    // View task details
+    function viewTaskDetails(taskId) {
+      // Open task details modal or navigate
+      window.location.href = `/tasks/${taskId}`;
+    }
+
+    // Start
+    init();
+  </script>
+</body>
+</html>

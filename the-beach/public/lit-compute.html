@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lit Compute Network - Decentralized Encryption</title>
+    <link rel="stylesheet" href="./css/premium.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+        
+        h1 {
+            font-size: 48px;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .subtitle {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+        
+        .connection-status {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin-top: 15px;
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .connection-status.connected {
+            background: rgba(76, 175, 80, 0.8);
+        }
+        
+        .connection-status.disconnected {
+            background: rgba(244, 67, 54, 0.8);
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .stat-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        
+        .stat-value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        @media (max-width: 968px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .panel {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .panel h2 {
+            margin-bottom: 20px;
+            color: #667eea;
+            font-size: 24px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        input[type="text"],
+        input[type="number"],
+        input[type="file"],
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="file"] {
+            padding: 8px;
+        }
+        
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .file-info {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .job-status {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .job-status.active {
+            display: block;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-active {
+            background: #cce5ff;
+            color: #004085;
+        }
+        
+        .status-completed {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-failed {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .jobs-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .job-item {
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+            transition: background 0.2s;
+        }
+        
+        .job-item:hover {
+            background: #f9f9f9;
+        }
+        
+        .job-item:last-child {
+            border-bottom: none;
+        }
+        
+        .job-id {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        
+        .nav-links {
+            text-align: center;
+            margin-top: 30px;
+        }
+        
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            margin: 0 10px;
+            display: inline-block;
+            transition: background 0.3s;
+        }
+        
+        .nav-links a:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 15px 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            display: none;
+            animation: slideIn 0.3s ease;
+            z-index: 1000;
+        }
+        
+        .toast.show {
+            display: block;
+        }
+        
+        .toast.success {
+            border-left: 4px solid #4caf50;
+        }
+        
+        .toast.error {
+            border-left: 4px solid #f44336;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔐 Lit Compute Network</h1>
+            <p class="subtitle">Decentralized Encryption-as-a-Service</p>
+            <div class="connection-status" id="connectionStatus">
+                🔴 Disconnected
+            </div>
+        </header>
+        
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">⏳</div>
+                <div class="stat-label">Pending Jobs</div>
+                <div class="stat-value" id="pendingJobs">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">✅</div>
+                <div class="stat-label">Completed Jobs</div>
+                <div class="stat-value" id="completedJobs">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🖥️</div>
+                <div class="stat-label">Active Nodes</div>
+                <div class="stat-value" id="activeNodes">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-label">Total Processed</div>
+                <div class="stat-value" id="totalJobs">0</div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Job Submission Panel -->
+            <div class="panel">
+                <h2>Submit Encryption Job</h2>
+                <form id="jobForm">
+                    <div class="form-group">
+                        <label>Upload File</label>
+                        <input type="file" id="fileInput" accept="*/*">
+                        <div class="file-info" id="fileInfo">No file selected</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label style="text-align: center; display: block; color: #999;">— OR —</label>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>IPFS CID</label>
+                        <input type="text" id="ipfsCID" placeholder="QmXxxx...">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Fee Amount (ETH)</label>
+                        <input type="number" id="feeAmount" step="0.01" min="0.01" value="0.1">
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary" id="submitBtn">
+                        Submit Job
+                    </button>
+                </form>
+                
+                <!-- Job Status Display -->
+                <div class="job-status" id="jobStatus">
+                    <h3 style="margin-bottom: 10px;">Current Job Status</h3>
+                    <p><strong>Job ID:</strong> <span class="job-id" id="currentJobId">-</span></p>
+                    <p><strong>Status:</strong> <span class="status-badge" id="currentJobStatus">-</span></p>
+                    <p id="nodeInfo" style="margin-top: 10px; display: none;"><strong>Node:</strong> <span id="currentNodeId">-</span></p>
+                    <p id="outputInfo" style="margin-top: 10px; display: none;"><strong>Output CID:</strong> <span id="currentOutputCID">-</span></p>
+                </div>
+            </div>
+            
+            <!-- Recent Jobs Panel -->
+            <div class="panel">
+                <h2>Recent Jobs</h2>
+                <div class="jobs-list" id="jobsList">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <p>No jobs submitted yet</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Navigation Links -->
+        <div class="nav-links">
+            <a href="/">🏝️ XR Paradise</a>
+            <a href="/lit-compute.html">🔐 Lit Compute</a>
+            <a href="#" onclick="alert('Node operator dashboard coming soon!')">🖥️ Node Dashboard</a>
+        </div>
+    </div>
+    
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+    
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.7.1/socket.io.min.js"></script>
+    
+    <!-- Lit Compute Client -->
+    <script src="./js/lit-compute-client.js"></script>
+</body>
+</html>

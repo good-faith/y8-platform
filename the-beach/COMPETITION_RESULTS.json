@@ -1,0 +1,166 @@
+{
+  "timestamp": "2025-11-06T13:46:36.546Z",
+  "duration_ms": 189375,
+  "duration_readable": "189.38s",
+  "teams_competed": 5,
+  "repositories": 2,
+  "total_tasks": 10,
+  "grand_champion": "Alpha Squadron",
+  "leaderboard": [
+    {
+      "rank": 1,
+      "team": "Alpha Squadron",
+      "strategy": "aggressive",
+      "total_score": "169.01",
+      "avg_score": "84.50",
+      "improvements": 10,
+      "repository_wins": 2
+    },
+    {
+      "rank": 2,
+      "team": "Omega Balance",
+      "strategy": "balanced",
+      "total_score": "164.67",
+      "avg_score": "82.34",
+      "improvements": 10,
+      "repository_wins": 0
+    },
+    {
+      "rank": 3,
+      "team": "Gamma Innovators",
+      "strategy": "innovative",
+      "total_score": "162.75",
+      "avg_score": "81.37",
+      "improvements": 10,
+      "repository_wins": 0
+    },
+    {
+      "rank": 4,
+      "team": "Delta Quality",
+      "strategy": "quality-focused",
+      "total_score": "161.91",
+      "avg_score": "80.95",
+      "improvements": 10,
+      "repository_wins": 0
+    },
+    {
+      "rank": 5,
+      "team": "Beta Guardians",
+      "strategy": "defensive",
+      "total_score": "144.20",
+      "avg_score": "72.10",
+      "improvements": 9,
+      "repository_wins": 0
+    }
+  ],
+  "repository_winners": [
+    {
+      "repo": "the-beach",
+      "team": "Alpha Squadron",
+      "teamId": "team-alpha",
+      "branch": "competition/team-alpha-winner",
+      "score": 84.83455685303484,
+      "improvements": 5
+    },
+    {
+      "repo": "y8-app",
+      "team": "Alpha Squadron",
+      "teamId": "team-alpha",
+      "branch": "competition/team-alpha-winner",
+      "score": 84.17401839404889,
+      "improvements": 5
+    }
+  ],
+  "detailed_results": [
+    {
+      "team": "Alpha Squadron",
+      "repository": "the-beach",
+      "score": "84.83",
+      "quality": "90.88",
+      "success_rate": "100%",
+      "time_ms": 16922,
+      "improvements": 5
+    },
+    {
+      "team": "Beta Guardians",
+      "repository": "the-beach",
+      "score": "78.76",
+      "quality": "81.27",
+      "success_rate": "100%",
+      "time_ms": 21818,
+      "improvements": 5
+    },
+    {
+      "team": "Gamma Innovators",
+      "repository": "the-beach",
+      "score": "79.71",
+      "quality": "82.45",
+      "success_rate": "100%",
+      "time_ms": 17603,
+      "improvements": 5
+    },
+    {
+      "team": "Delta Quality",
+      "repository": "the-beach",
+      "score": "79.81",
+      "quality": "83.02",
+      "success_rate": "100%",
+      "time_ms": 20016,
+      "improvements": 5
+    },
+    {
+      "team": "Omega Balance",
+      "repository": "the-beach",
+      "score": "81.52",
+      "quality": "85.60",
+      "success_rate": "100%",
+      "time_ms": 18432,
+      "improvements": 5
+    },
+    {
+      "team": "Alpha Squadron",
+      "repository": "y8-app",
+      "score": "84.17",
+      "quality": "89.89",
+      "success_rate": "100%",
+      "time_ms": 17622,
+      "improvements": 5
+    },
+    {
+      "team": "Beta Guardians",
+      "repository": "y8-app",
+      "score": "65.44",
+      "quality": "67.99",
+      "success_rate": "80%",
+      "time_ms": 13538,
+      "improvements": 4
+    },
+    {
+      "team": "Gamma Innovators",
+      "repository": "y8-app",
+      "score": "83.03",
+      "quality": "87.73",
+      "success_rate": "100%",
+      "time_ms": 16016,
+      "improvements": 5
+    },
+    {
+      "team": "Delta Quality",
+      "repository": "y8-app",
+      "score": "82.10",
+      "quality": "86.83",
+      "success_rate": "100%",
+      "time_ms": 27818,
+      "improvements": 5
+    },
+    {
+      "team": "Omega Balance",
+      "repository": "y8-app",
+      "score": "83.15",
+      "quality": "88.52",
+      "success_rate": "100%",
+      "time_ms": 19568,
+      "improvements": 5
+    }
+  ]
+}

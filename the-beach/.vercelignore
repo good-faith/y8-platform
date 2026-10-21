@@ -1,0 +1,9 @@
+node_modules
+.git
+.env.local
+.env.development.local
+test
+*.spec.ts
+*.test.ts
+coverage
+.nyc_output

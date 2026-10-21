@@ -1,0 +1,7 @@
+.footer {
+    background-color: #f5c518; /* Y8 yellow */
+    color: #1a1a1a;
+    text-align: center;
+    padding: 20px;
+    margin-top: auto; /* Pushes footer to bottom if content is short */
+  }

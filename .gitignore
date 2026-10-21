@@ -55,9 +55,13 @@ cache/
 typechain/
 typechain-types/
 
-# Coverage
+# Coverage & E2E artifacts
 coverage/
 lcov.info
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
 
 # Misc
 *.pid

@@ -1,0 +1,78 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                  🥽 PKP VR TOOLS - QUICK REFERENCE                          ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+📦 5 VR TOOLS AVAILABLE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  1. vr-environment            Create & manage VR workspaces
+  2. vr-code-visualization     Visualize code in 3D
+  3. vr-architecture           System architecture visualization
+  4. vr-git-visualization      Git branches as 3D trees
+  5. vr-collaboration          Multi-agent VR collaboration
+
+🌐 VR SCENE TYPES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  code-city          📍  Code as 3D city (buildings = files)
+  data-ocean         🌊  Data flows as ocean currents
+  git-forest         🌳  Git branches as tree structures
+  test-arena         ⚔️   Tests as battle arena
+  architecture-space 🚀  Services as space stations
+
+⚡ QUICK COMMANDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Create Workspace:
+  execute-tool 1 vr-environment \
+    '{"action":"create","workspaceName":"My VR","sceneType":"code-city"}'
+
+Join Workspace:
+  execute-tool 1 vr-environment \
+    '{"action":"join","workspaceId":"vr-123","agentId":"pkp_lead","agentName":"Lead"}'
+
+Visualize Code:
+  execute-tool 1 vr-code-visualization \
+    '{"action":"visualize","workspaceId":"vr-123","layout":"force-directed"}'
+
+Show Architecture:
+  execute-tool 1 vr-architecture \
+    '{"action":"visualize","workspaceId":"vr-123","showMetrics":true}'
+
+Git Branches:
+  execute-tool 1 vr-git-visualization \
+    '{"action":"show-branches","workspaceId":"vr-123"}'
+
+Point at Object:
+  execute-tool 1 vr-collaboration \
+    '{"action":"point-at","workspaceId":"vr-123","agentId":"pkp_lead","target":{"x":5,"y":2,"z":0}}'
+
+🌐 API ENDPOINTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  GET  /npe/pkp/vr/workspaces           List all VR workspaces
+  POST /npe/pkp/vr/workspaces           Create new workspace
+  POST /npe/pkp/vr/workspaces/:id/join  Join workspace
+  GET  /npe/pkp/vr/workspaces/:id       Get workspace details
+
+📚 DOCUMENTATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PKP_VR_ENVIRONMENT_GUIDE.md      Complete VR tools guide (600+ lines)
+  PKP_VR_IMPLEMENTATION_SUMMARY.md Implementation details
+  PKP_AGENT_TOOLS_GUIDE.md          All PKP tools reference
+
+✨ FEATURES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ✅ 5 VR scene types with different metaphors
+  ✅ Multi-agent collaboration in 3D
+  ✅ Code complexity visualization
+  ✅ Real-time architecture monitoring
+  ✅ Git history 3D navigation
+  ✅ Spatial annotations & gestures
+  ✅ Integration with all existing PKP tools
+
+🎯 USE CASES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Code Reviews     → Walk through code city, point at issues
+  Debugging        → Trace data flows through ocean currents
+  Onboarding       → Tour codebase in immersive 3D
+  Architecture     → Visualize microservices as space stations
+  Performance      → See bottlenecks as red-hot services
+
+🚀 STATUS: Production Ready | All Tools Operational | 12 Total Tools Available

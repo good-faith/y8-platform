@@ -1,0 +1,21 @@
+{
+  "name": "e2e",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "playwright test"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.49.0",
+    "ethers": "^6.13.6",
+    "socket.io-client": "^4.8.3",
+    "next-auth": "^4.24.14",
+    "@y8/api-client": "*",
+    "@y8/types": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "typescript": "^5.8.3"
+  }
+}

@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PKP VR Workspace - AI Agents in Immersive Development</title>
+    
+    <!-- Babylon.js -->
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+    <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
+    <link rel="stylesheet" href="./css/premium.css">
+    
+    <style>
+        html, body {
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+        
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            text-align: center;
+            color: white;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+        
+        #loading.hidden {
+            display: none;
+        }
+        
+        #loading h2 {
+            margin: 0 0 20px 0;
+            font-size: 28px;
+        }
+        
+        #loading-text {
+            font-size: 16px;
+            opacity: 0.8;
+            margin-bottom: 20px;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            margin: 20px auto;
+            border: 4px solid rgba(255, 255, 255, 0.2);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        #ui-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            min-width: 320px;
+            max-width: 400px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+        }
+        
+        #ui-panel.hidden {
+            display: none;
+        }
+        
+        #ui-panel h3 {
+            margin: 0 0 15px 0;
+            font-size: 20px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .workspace-info {
+            margin: 15px 0;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        .workspace-info label {
+            display: block;
+            opacity: 0.7;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+        
+        .workspace-info .value {
+            font-weight: bold;
+            color: #a3d9ff;
+        }
+        
+        .agents-list {
+            max-height: 200px;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+        
+        .agent-item {
+            padding: 8px;
+            margin: 5px 0;
+            background: rgba(102, 126, 234, 0.2);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .agent-status {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        
+        .agent-status.working {
+            background: #4ade80;
+            animation: pulse 2s infinite;
+        }
+        
+        .agent-status.idle {
+            background: #808080;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        #stats {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        #stats.hidden {
+            display: none;
+        }
+        
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            margin: 5px 0;
+        }
+        
+        .stat-label {
+            opacity: 0.7;
+        }
+        
+        .stat-value {
+            font-weight: bold;
+            color: #4ade80;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="renderCanvas"></canvas>
+    
+    <!-- Loading Screen -->
+    <div id="loading">
+        <h2>🥽 PKP VR Workspace</h2>
+        <div id="loading-text">Initializing immersive environment...</div>
+        <div class="spinner"></div>
+    </div>
+    
+    <!-- UI Panel -->
+    <div id="ui-panel" class="hidden">
+        <h3>🤖 VR Workspace</h3>
+        
+        <div class="workspace-info">
+            <label>Workspace</label>
+            <div class="value" id="workspace-name">Loading...</div>
+        </div>
+        
+        <div class="workspace-info">
+            <label>Scene Type</label>
+            <div class="value" id="scene-type">code-city</div>
+        </div>
+        
+        <div class="workspace-info">
+            <label>Active Agents</label>
+            <div class="agents-list" id="agents-list">
+                <div class="agent-item">
+                    <div class="agent-status working"></div>
+                    <span>PKP Lead - Working on architecture review</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn btn-primary" id="enterVR">
+                🥽 Enter VR Mode
+            </button>
+            <button class="btn btn-secondary" id="switchScene">
+                🔄 Switch Scene Type
+            </button>
+            <button class="btn btn-secondary" id="toggleAgents">
+                👁️ Toggle Agent Avatars
+            </button>
+        </div>
+    </div>
+    
+    <!-- Stats Panel -->
+    <div id="stats" class="hidden">
+        <div class="stat-row">
+            <span class="stat-label">FPS:</span>
+            <span class="stat-value" id="fps">60</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Objects:</span>
+            <span class="stat-value" id="object-count">0</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Agents:</span>
+            <span class="stat-value" id="agent-count">0</span>
+        </div>
+    </div>
+    
+    <script type="module" src="/js/pkp-vr-workspace.js"></script>
+</body>
+</html>

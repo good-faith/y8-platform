@@ -1,0 +1,24 @@
+{
+  "_comment": "Redis Configuration Template - Replace with your actual Vercel KV credentials",
+  "_warning": "DO NOT COMMIT THIS FILE WITH REAL CREDENTIALS",
+  
+  "host": "your-redis-instance.upstash.io",
+  "port": 6379,
+  "password": "your-redis-password-here",
+  "username": "default",
+  "tls": true,
+  
+  "_kvComment": "Vercel KV REST API credentials (optional, for serverless environments)",
+  "kvRestApiUrl": "https://your-kv-instance.upstash.io",
+  "kvRestApiToken": "AYxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "kvRestApiReadOnlyToken": "Aoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  
+  "_instructions": [
+    "1. Get Vercel KV credentials from: https://vercel.com/dashboard/stores",
+    "2. Or create Upstash Redis at: https://console.upstash.com/",
+    "3. Replace the placeholder values above with your real credentials",
+    "4. Run: node scripts/pkp-redis-encryptor.js encrypt --config=redis-config.template.json",
+    "5. Commit the encrypted output: redis-config.encrypted.json",
+    "6. Delete this file or keep it as template (never commit with real values)"
+  ]
+}

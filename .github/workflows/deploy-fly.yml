@@ -25,29 +25,41 @@ jobs:
       matrix:
         app:
           - name: y8-server
+            short: server
             config: y8-server/fly.toml
-            fly_app: y8-server
+            dockerfile: docker/server.Dockerfile
+            fly_app: y8-server-jason-sprouse
           - name: y8-beach
+            short: beach
             config: the-beach/fly.toml
-            fly_app: y8-beach
+            dockerfile: docker/beach.Dockerfile
+            fly_app: y8-beach-jason-sprouse
           - name: y8-web
+            short: web
             config: y8-app/fly.toml
-            fly_app: y8-web
+            dockerfile: docker/web.Dockerfile
+            fly_app: y8-web-jason-sprouse
           - name: y8-premier
+            short: premier
             config: y8-premier/fly.toml
-            fly_app: y8-premier
+            dockerfile: docker/premier.Dockerfile
+            fly_app: y8-premier-jason-sprouse
 
     steps:
       - uses: actions/checkout@v4
+        if: ${{ !inputs.app || inputs.app == 'all' || inputs.app == matrix.app.short || inputs.app == matrix.app.name }}
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
+        if: ${{ !inputs.app || inputs.app == 'all' || inputs.app == matrix.app.short || inputs.app == matrix.app.name }}
 
       - name: Deploy ${{ matrix.app.name }}
-        run: flyctl deploy --config ${{ matrix.app.config }} --remote-only
+        if: ${{ !inputs.app || inputs.app == 'all' || inputs.app == matrix.app.short || inputs.app == matrix.app.name }}
+        run: flyctl deploy . --config ${{ matrix.app.config }} --dockerfile ${{ matrix.app.dockerfile }} --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
       - name: Show app URL
+        if: ${{ !inputs.app || inputs.app == 'all' || inputs.app == matrix.app.short || inputs.app == matrix.app.name }}
         run: flyctl status --app ${{ matrix.app.fly_app }}
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
@@ -64,7 +76,7 @@ jobs:
         run: |
           echo '## Fly.io Deployment 🚀' >> $GITHUB_STEP_SUMMARY
           echo '' >> $GITHUB_STEP_SUMMARY
-          for app in y8-server y8-beach y8-web y8-premier; do
+          for app in y8-server-jason-sprouse y8-beach-jason-sprouse y8-web-jason-sprouse y8-premier-jason-sprouse; do
             url=$(flyctl info --app $app --json 2>/dev/null | jq -r '.Hostname // "pending"')
             echo "- **${app}**: https://${url}" >> $GITHUB_STEP_SUMMARY
           done

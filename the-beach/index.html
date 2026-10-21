@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Beach</title>
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#f5c518" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+    <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/webrtc-adapter@8"></script>
+
+    <!-- Y8 Geo / Spatial modules -->
+    <script src="/js/coordinate-mapper.js"></script>
+    <script src="/js/zone-renderer.js"></script>
+    <script src="/js/agent-avatar.js"></script>
+    <script src="/js/spatial-menu.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            overflow: hidden; /* Prevent scrollbars */
+        }
+        #renderCanvas {
+            width: 100%;
+            height: 100vh;
+            display: block; /* Removes extra space below canvas */
+            touch-action: none; /* Prevent browser gestures */
+        }
+        #video-container {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 10; /* Ensure videos are above the scene */
+        }
+        .video-feed {
+            width: 120px; /* Smaller video feeds */
+            height: 90px;
+            border: 2px solid #4CAF50; /* Green border */
+            border-radius: 8px;
+            margin: 5px;
+            object-fit: cover; /* Ensure video fills the container */
+            background-color: #000; /* Black background for video */
+            transform: scaleX(-1); /* Mirror local video */
+        }
+        .video-feed.local {
+            border-color: #00B0FF; /* Blue border for local video */
+        }
+        #debug-info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            z-index: 10;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.8em;
+        }
+    </style>
+</head>
+<body class="bg-gray-900">
+    <canvas id="renderCanvas"></canvas>
+    <div id="video-container">
+        <video id="local-video" class="video-feed local" autoplay muted playsinline></video>
+    </div>
+    <div id="debug-info">
+        <p>User ID: <span id="user-id">Loading...</span></p>
+        <p>Room: <span id="room-id">Loading...</span></p>
+        <p>Peers: <span id="peer-count">0</span></p>
+        <p>XR Session: <span id="xr-session-status">Not Started</span></p>
+        <p>Position: <span id="position-info">X:0 Y:0 Z:0</span></p>
+    </div>
+
+    <script>
+        // --- Global State & Elements ---
+        // Encapsulate state where possible, but some globals are convenient here
+        const canvas = document.getElementById('renderCanvas');
+        const localVideo = document.getElementById('local-video');
+        const videoContainer = document.getElementById('video-container');
+        const debugElements = {
+            userId: document.getElementById('user-id'),
+            roomId: document.getElementById('room-id'),
+            peerCount: document.getElementById('peer-count'),
+            xrStatus: document.getElementById('xr-session-status'),
+            positionInfo: document.getElementById('position-info')
+        };
+
+        let engine, scene, camera, xrHelper, socket, localStream;
+        let userId, roomId;
+        const peerConnections = new Map();
+        const peerVideos = new Map();
+        const peerAvatars = new Map();
+        const inputMap = {}; // Stores pressed keys
+
+        // --- 1. Engine and Scene Setup ---
+        function initializeBabylonEngine(canvas) {
+            console.log("Initializing Babylon Engine...");
+            const engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
+            window.addEventListener('resize', () => engine.resize()); // Handle resize
+            console.log("Engine Initialized.");
+            return engine;
+        }
+
+        async function createBabylonScene(engine, canvas, xrStatusEl) {
+            console.log("Creating Babylon Scene...");
+            scene = new BABYLON.Scene(engine);
+            scene.clearColor = new BABYLON.Color3(0.53, 0.81, 0.92); // Sky blue
+            scene.gravity = new BABYLON.Vector3(0, -0.981, 0); // Standard gravity
+            scene.collisionsEnabled = true; // Enable collisions globally
+
+            // --- Camera (Non-VR Fallback) ---
+            camera = new BABYLON.FreeCamera("FreeCamera", new BABYLON.Vector3(0, 1.6, -5), scene);
+            camera.attachControl(canvas, true);
+            camera.speed = 0.2;
+            camera.angularSensibility = 4000;
+            camera.minZ = 0.1;
+            camera.ellipsoid = new BABYLON.Vector3(0.5, 0.8, 0.5); // Collision avatar size
+            camera.checkCollisions = true;
+            camera.applyGravity = true;
+
+            // --- Lighting ---
+            const light = new BABYLON.HemisphericLight("hemiLight", new BABYLON.Vector3(0, 1, 0), scene);
+            light.intensity = 0.8;
+            const dirLight = new BABYLON.DirectionalLight("dirLight", new BABYLON.Vector3(-1, -2, -1), scene);
+            dirLight.position = new BABYLON.Vector3(20, 40, 20);
+            dirLight.intensity = 0.7;
+
+            // --- Shadows ---
+            const shadowGenerator = new BABYLON.ShadowGenerator(1024, dirLight);
+            shadowGenerator.useBlurExponentialShadowMap = true;
+            shadowGenerator.blurKernel = 32;
+
+            // --- Room Geometry ---
+            createRoomGeometry(scene, shadowGenerator);
+
+            // --- WebXR Setup ---
+            xrHelper = await setupWebXR(scene, xrStatusEl, camera);
+
+             // --- Input Handling ---
+            setupInputHandling(scene, inputMap);
+
+            console.log("Scene Created.");
+            return { scene, camera, xrHelper }; // Return created objects
+        }
+
+        function createRoomGeometry(scene, shadowGenerator) {
+            const roomSize = 20;
+            const wallHeight = 3;
+            const wallThickness = 0.2;
+
+            // Ground
+            const ground = BABYLON.MeshBuilder.CreateGround("ground", { width: roomSize, height: roomSize }, scene);
+            ground.checkCollisions = true;
+            const groundMat = new BABYLON.StandardMaterial("groundMat", scene);
+            groundMat.diffuseColor = new BABYLON.Color3(0.56, 0.74, 0.56);
+            ground.material = groundMat;
+            ground.receiveShadows = true;
+
+            // Walls
+            const wallMat = new BABYLON.StandardMaterial("wallMat", scene);
+            wallMat.diffuseColor = new BABYLON.Color3(0.75, 0.75, 0.75);
+
+            const walls = [
+                { name: "N", w: roomSize, d: wallThickness, x: 0, z: roomSize / 2 - wallThickness / 2 },
+                { name: "S", w: roomSize, d: wallThickness, x: 0, z: -roomSize / 2 + wallThickness / 2 },
+                { name: "E", w: wallThickness, d: roomSize, x: roomSize / 2 - wallThickness / 2, z: 0 },
+                { name: "W", w: wallThickness, d: roomSize, x: -roomSize / 2 + wallThickness / 2, z: 0 }
+            ];
+
+            walls.forEach(w => {
+                const wall = BABYLON.MeshBuilder.CreateBox(`wall${w.name}`, { width: w.w, height: wallHeight, depth: w.d }, scene);
+                wall.position = new BABYLON.Vector3(w.x, wallHeight / 2, w.z);
+                wall.material = wallMat;
+                wall.checkCollisions = true;
+                shadowGenerator.addShadowCaster(wall);
+                wall.receiveShadows = true; // Walls can receive shadows too
+            });
+        }
+
+        async function setupWebXR(scene, xrStatusEl, fallbackCamera) {
+            console.log("Setting up WebXR...");
+            try {
+                const xr = await scene.createDefaultXRExperienceAsync({
+                    floorMeshes: [scene.getMeshByName("ground")],
+                });
+
+                xr.onStateChangedObservable.add((state) => {
+                    xrStatusEl.textContent = BABYLON.WebXRState[state];
+                    switch (state) {
+                        case BABYLON.WebXRState.IN_XR:
+                            console.log("Entered XR");
+                            camera = xr.baseExperience.camera; // Update global camera reference
+                            break;
+                        case BABYLON.WebXRState.NOT_IN_XR:
+                            console.log("Exited XR");
+                            camera = fallbackCamera; // Revert to fallback camera
+                            if (camera) scene.activeCamera = camera;
+                            break;
+                    }
+                });
+
+                if (!xr.baseExperience) {
+                    console.log("WebXR not supported.");
+                    xrStatusEl.textContent = "Not Supported";
+                    return null;
+                } else {
+                     xrStatusEl.textContent = "Ready";
+                     console.log("WebXR Ready.");
+                     return xr; // Return the helper
+                }
+            } catch (error) {
+                console.error("Error initializing WebXR:", error);
+                xrStatusEl.textContent = "Init Error";
+                return null;
+            }
+        }
+
+        // --- 2. Input Handling ---
+        function setupInputHandling(scene, inputMap) {
+            console.log("Setting up Input Handling...");
+            scene.actionManager = new BABYLON.ActionManager(scene);
+            scene.actionManager.registerAction(new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnKeyDownTrigger, (evt) => {
+                inputMap[evt.sourceEvent.key.toLowerCase()] = true;
+            }));
+            scene.actionManager.registerAction(new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnKeyUpTrigger, (evt) => {
+                inputMap[evt.sourceEvent.key.toLowerCase()] = false;
+            }));
+            console.log("Input Handling Ready.");
+        }
+
+        function handleNonVRMovement(camera, inputMap, engine) {
+            if (!camera || !(camera instanceof BABYLON.FreeCamera)) return; // Only move FreeCamera
+
+            const moveSpeed = camera.speed * engine.getDeltaTime() / 16; // Frame-rate independent speed
+            let velocity = BABYLON.Vector3.Zero(); // Use camera's local space for movement
+
+            if (inputMap["w"] || inputMap["arrowup"]) {
+                velocity.z += 1;
+            }
+            if (inputMap["s"] || inputMap["arrowdown"]) {
+                velocity.z -= 1;
+            }
+            if (inputMap["a"] || inputMap["arrowleft"]) {
+                 velocity.x -= 1;
+            }
+            if (inputMap["d"] || inputMap["arrowright"]) {
+                 velocity.x += 1;
+            }
+
+            // Normalize velocity if moving diagonally and apply speed
+            if (velocity.length() > 0.1) {
+                 velocity.normalize().scaleInPlace(moveSpeed);
+                 // Transform velocity to world space based on camera rotation
+                 const worldVelocity = BABYLON.Vector3.TransformNormal(velocity, camera.getWorldMatrix());
+                 // Apply movement directly to position (gravity/collisions handled by engine)
+                 camera.cameraDirection.addInPlace(worldVelocity);
+            }
+
+            // Handle vertical movement separately (not affected by camera direction)
+             if (inputMap["e"]) { // Move Up (respecting collisions)
+                camera.position.y += moveSpeed;
+            }
+            if (inputMap["q"]) { // Move Down (respecting collisions)
+                camera.position.y -= moveSpeed;
+            }
+        }
+
+
+        // --- 3. WebRTC Setup ---
+        async function setupWebRTC(localVideoElement) {
+            console.log("Setting up WebRTC...");
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'user', width: 160, height: 120 },
+                    audio: true,
+                });
+                localVideoElement.srcObject = stream;
+                console.log("WebRTC Media Stream acquired.");
+                return stream; // Return the stream
+            } catch (error) {
+                console.error("Error accessing media devices.", error);
+                alert("Could not access camera/microphone. Please check permissions.");
+                return null;
+            }
+        }
+
+        // --- 4. Socket.IO Setup ---
+        function setupSocketIO(debugElements) {
+            console.log("Setting up Socket.IO...");
+            const socket = io('http://localhost:3000'); // Connect
+
+            socketInstance.on('connect', () => {
+                userId = socketInstance.id;
+                debugElements.userId.textContent = userId;
+                console.log('Connected to server with ID:', userId);
+                // Join room *after* connection is established
+                socketInstance.emit('join-room', 'babylon-vr-room');
+            });
+
+            socketInstance.on('joined-room', (joinedRoomId) => {
+                roomId = joinedRoomId;
+                debugElements.roomId.textContent = roomId;
+                console.log(`Joined room: ${roomId}`);
+            });
+
+            socketInstance.on('disconnect', () => {
+                console.log('Disconnected from server.');
+                 // Handle cleanup if needed
+                 debugElements.userId.textContent = 'Disconnected';
+                 debugElements.roomId.textContent = 'N/A';
+            });
+
+            socketInstance.on('connect_error', (error) => {
+                console.error('Socket connection error:', error);
+                alert('Could not connect to the signaling server.');
+            });
+
+            console.log("Socket.IO Initialized.");
+            return socketInstance;
+        }
+
+        // --- 5. WebRTC Signaling (Depends on Socket.IO and WebRTC) ---
+        function setupWebRTCSignaling(socket, localStream, peerConnections, peerVideos, videoContainer, peerAvatars, scene, debugElements) {
+            if (!socket || !localStream) {
+                console.error("Cannot setup signaling without socket or local stream.");
+                return;
+            }
+            console.log("Setting up WebRTC Signaling Listeners...");
+
+            socket.on('user-joined', async (newPeerId) => {
+                if (newPeerId === userId) return;
+                console.log(`User ${newPeerId} joined`);
+
+                const pc = createPeerConnection(newPeerId, localStream, peerConnections, peerVideos, videoContainer, debugElements);
+                if (!pc) return;
+
+                createPeerAvatar(newPeerId, scene, peerAvatars); // Create 3D avatar
+
+                try {
+                    const offer = await pc.createOffer();
+                    await pc.setLocalDescription(offer);
+                    socket.emit('offer', { to: newPeerId, offer });
+                    console.log(`Sent offer to ${newPeerId}`);
+                } catch (error) {
+                    console.error(`Error creating offer for ${newPeerId}:`, error);
+                }
+            });
+
+            socket.on('offer', async (data) => {
+                const { offer, from: peerId } = data;
+                console.log(`Received offer from ${peerId}`);
+                let pc = peerConnections.get(peerId);
+                if (!pc) {
+                    pc = createPeerConnection(peerId, localStream, peerConnections, peerVideos, videoContainer, debugElements);
+                    if (!pc) return;
+                    createPeerAvatar(peerId, scene, peerAvatars); // Ensure avatar exists if connection initiated by remote
+                }
+                await handleOffer(offer, peerId, pc, socket);
+            });
+
+            socket.on('answer', async(data) => {
+                const { answer, from: peerId } = data;
+                console.log(`Received answer from ${peerId}`);
+                await handleAnswer(answer, peerId, peerConnections);
+            });
+
+            socket.on('ice-candidate', async (data) => {
+                const { candidate, from: peerId } = data;
+                await handleIceCandidate(candidate, peerId, peerConnections);
+            });
+
+            socket.on('user-disconnected', (disconnectedPeerId) => {
+                if (disconnectedPeerId === userId) return;
+                console.log(`User ${disconnectedPeerId} disconnected`);
+                cleanupPeerConnection(disconnectedPeerId, peerConnections, peerVideos, peerAvatars, debugElements);
+            });
+
+            // Listen for movement updates for other users
+            socket.on('move', (data) => {
+                if (data.userId === userId || !scene) return;
+                updatePeerAvatar(data.userId, data.position, data.rotation, peerAvatars);
+            });
+
+            console.log("WebRTC Signaling Ready.");
+        }
+
+        function createPeerConnection(peerId, localStream, peerConnections, peerVideos, videoContainer, debugElements) {
+            console.log(`Creating peer connection for ${peerId}`);
+            const pc = new RTCPeerConnection({
+                iceServers: [ { urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' } ],
+            });
+
+            pc.onicecandidate = (event) => {
+                if (event.candidate) {
+                    socket.emit('ice-candidate', { to: peerId, candidate: event.candidate });
+                }
+            };
+
+            pc.ontrack = (event) => {
+                console.log(`Track received from ${peerId}`);
+                let video = peerVideos.get(peerId);
+                if (!video) {
+                    video = document.createElement('video');
+                    video.classList.add('video-feed');
+                    video.autoplay = true;
+                    video.playsinline = true;
+                    video.dataset.peerId = peerId;
+                    videoContainer.appendChild(video);
+                    peerVideos.set(peerId, video);
+                }
+                if (event.streams && event.streams[0]) {
+                     video.srcObject = event.streams[0];
+                } else {
+                    let inboundStream = new MediaStream([event.track]);
+                    video.srcObject = inboundStream;
+                }
+            };
+
+            pc.oniceconnectionstatechange = () => {
+                console.log(`ICE state for ${peerId}: ${pc.iceConnectionState}`);
+                if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'closed') {
+                    console.warn(`Peer connection for ${peerId} failed or closed.`);
+                    // Consider cleanup here as well, although user-disconnected event is primary
+                    // cleanupPeerConnection(peerId, peerConnections, peerVideos, peerAvatars, debugElements);
+                }
+            };
+
+             // Add local tracks
+            localStream.getTracks().forEach((track) => {
+                try {
+                    pc.addTrack(track, localStream);
+                } catch (error) {
+                    console.error(`Error adding track for ${peerId}:`, error);
+                }
+            });
+
+            peerConnections.set(peerId, pc);
+            updatePeerCount(peerConnections.size, debugElements.peerCount);
+            return pc;
+        }
+
+        async function handleOffer(offer, peerId, pc, socket) {
+             try {
+                await pc.setRemoteDescription(new RTCSessionDescription(offer));
+                const answer = await pc.createAnswer();
+                await pc.setLocalDescription(answer);
+                socket.emit('answer', { to: peerId, answer });
+                console.log(`Sent answer to ${peerId}`);
+            } catch (error) {
+                console.error(`Error handling offer from ${peerId}:`, error);
+            }
+        }
+
+        async function handleAnswer(answer, peerId, peerConnections) {
+            const pc = peerConnections.get(peerId);
+            if (!pc) return console.error(`No peer connection for ${peerId} to handle answer`);
+            try {
+                await pc.setRemoteDescription(new RTCSessionDescription(answer));
+                console.log(`Remote description set for ${peerId}`);
+            } catch (error) {
+                 console.error(`Error handling answer from ${peerId}:`, error);
+            }
+        }
+
+        async function handleIceCandidate(candidate, peerId, peerConnections) {
+            const pc = peerConnections.get(peerId);
+            if (!pc) return console.error(`No peer connection for ${peerId} to handle candidate`);
+             try {
+                 if (candidate) {
+                    await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                 }
+            } catch (error) {
+                 console.error(`Error adding ICE candidate from ${peerId}:`, error);
+            }
+        }
+
+        function cleanupPeerConnection(peerId, peerConnections, peerVideos, peerAvatars, debugElements) {
+            // Close and remove PeerConnection
+            const pc = peerConnections.get(peerId);
+            if (pc) {
+                pc.close();
+                peerConnections.delete(peerId);
+            }
+            // Remove video element
+            const video = peerVideos.get(peerId);
+            if (video) {
+                video.srcObject = null;
+                video.remove();
+                peerVideos.delete(peerId);
+            }
+            // Remove 3D avatar
+            removePeerAvatar(peerId, peerAvatars);
+            // Update UI
+            updatePeerCount(peerConnections.size, debugElements.peerCount);
+        }
+
+        function updatePeerCount(count, peerCountEl) {
+            peerCountEl.textContent = count;
+        }
+
+
+        // --- 6. Avatar Management ---
+        function createPeerAvatar(peerId, scene, peerAvatars) {
+            if (!scene || peerAvatars.has(peerId)) return;
+            console.log(`Creating avatar for ${peerId}`);
+
+            const avatar = BABYLON.MeshBuilder.CreateCapsule(`avatar_${peerId}`, { height: 1.6, radius: 0.3 }, scene);
+            avatar.position = new BABYLON.Vector3(0, -100, 0); // Start off-screen, wait for first move event
+            avatar.rotationQuaternion = new BABYLON.Quaternion();
+            avatar.checkCollisions = true; // Enable collisions for avatars if desired
+            avatar.ellipsoid = new BABYLON.Vector3(0.3, 0.8, 0.3); // Collision shape for avatar
+
+            const avatarMat = new BABYLON.StandardMaterial(`avatarMat_${peerId}`, scene);
+            avatarMat.diffuseColor = BABYLON.Color3.Random();
+            avatarMat.alpha = 0.8;
+            avatar.material = avatarMat;
+
+            const head = BABYLON.MeshBuilder.CreateSphere(`head_${peerId}`, { diameter: 0.4 }, scene);
+            head.parent = avatar;
+            head.position.y = 0.8;
+            const headMat = new BABYLON.StandardMaterial(`headMat_${peerId}`, scene);
+            headMat.diffuseColor = new BABYLON.Color3(0.9, 0.9, 0.9);
+            head.material = headMat;
+
+            peerAvatars.set(peerId, avatar);
+        }
+
+        function removePeerAvatar(peerId, peerAvatars) {
+            const avatar = peerAvatars.get(peerId);
+            if (avatar) {
+                console.log(`Removing avatar for ${peerId}`);
+                avatar.dispose(false, true);
+                peerAvatars.delete(peerId);
+            }
+        }
+
+        function updatePeerAvatar(peerId, positionData, rotationData, peerAvatars) {
+            const avatar = peerAvatars.get(peerId);
+            if (avatar) {
+                const targetPosition = new BABYLON.Vector3(positionData.x, positionData.y, positionData.z);
+                const targetRotation = new BABYLON.Quaternion(rotationData.x, rotationData.y, rotationData.z, rotationData.w);
+
+                // Use interpolation for smoother visual updates
+                avatar.position = BABYLON.Vector3.Lerp(avatar.position, targetPosition, 0.15);
+                avatar.rotationQuaternion = BABYLON.Quaternion.Slerp(avatar.rotationQuaternion, targetRotation, 0.15);
+            }
+             // else { console.warn(`Avatar not found for update: ${peerId}`); } // Avatar might not be created yet
+        }
+
+        // --- 7. Render Loop and Position Emission ---
+        function startRenderLoop(engine, scene, socket, debugElements) {
+            console.log("Starting Render Loop...");
+            let lastEmitTime = 0;
+            const emitInterval = 100; // ms
+
+            engine.runRenderLoop(() => {
+                if (!scene || !camera) return; // Wait until scene/camera are ready
+
+                // Handle non-VR movement based on inputMap
+                 if (xrHelper && xrHelper.state === BABYLON.WebXRState.NOT_IN_XR) {
+                    handleNonVRMovement(camera, inputMap, engine);
+                 }
+
+                // Emit position periodically
+                const now = performance.now();
+                if (socket && socket.connected && userId && now - lastEmitTime > emitInterval) {
+                    lastEmitTime = now;
+                    emitPositionUpdate(socket, camera, xrHelper, userId, debugElements.positionInfo);
+                }
+
+                scene.render();
+            });
+            console.log("Render Loop Started.");
+        }
+
+        function emitPositionUpdate(socket, currentCamera, xrHelper, userId, positionInfoEl) {
+            let pos, rot;
+
+            if (xrHelper && xrHelper.state === BABYLON.WebXRState.IN_XR) {
+                pos = xrHelper.baseExperience.camera.globalPosition;
+                rot = xrHelper.baseExperience.camera.rotationQuaternion;
+            } else if (currentCamera) { // Use the active non-VR camera
+                pos = currentCamera.globalPosition;
+                // Ensure quaternion exists and is updated for FreeCamera
+                if (!currentCamera.rotationQuaternion) {
+                    currentCamera.rotationQuaternion = BABYLON.Quaternion.FromEulerVector(currentCamera.rotation);
+                } else {
+                    BABYLON.Quaternion.FromEulerVectorToRef(currentCamera.rotation, currentCamera.rotationQuaternion);
+                }
+                rot = currentCamera.rotationQuaternion;
+            }
+
+            if (pos && rot) {
+                 socket.emit('move', {
+                    userId: userId,
+                    position: { x: pos.x, y: pos.y, z: pos.z },
+                    rotation: { x: rot.x, y: rot.y, z: rot.z, w: rot.w }
+                });
+                // Update debug info
+                positionInfoEl.textContent = `X:${pos.x.toFixed(2)} Y:${pos.y.toFixed(2)} Z:${pos.z.toFixed(2)}`;
+            }
+        }
+
+
+        // --- 8. Main Application Initialization ---
+        async function main() {
+            console.log("Starting Application Initialization...");
+            try {
+                // Initialize core components
+                engine = initializeBabylonEngine(canvas);
+                localStream = await setupWebRTC(localVideo); // Get media first
+
+                // Create scene (which includes XR setup)
+                const sceneResult = await createBabylonScene(engine, canvas, debugElements.xrStatus);
+                scene = sceneResult.scene;
+                // camera and xrHelper are now globally assigned within createBabylonScene/setupWebXR
+
+                // Initialize networking *after* core components are ready
+                socket = setupSocketIO(debugElements);
+
+                // Setup signaling listeners (needs socket and localStream)
+                // Delay slightly or wait for socket connection? For simplicity, assume connection happens quickly.
+                // A more robust approach would wait for the 'connect' event before setting up signaling.
+                if (localStream) {
+                     setupWebRTCSignaling(socket, localStream, peerConnections, peerVideos, videoContainer, peerAvatars, scene, debugElements);
+                } else {
+                    console.warn("Local stream not available, WebRTC signaling disabled.");
+                    alert("Webcam/Microphone not available. Video chat will be disabled.");
+                }
+
+
+                // Start the rendering loop
+                startRenderLoop(engine, scene, socket, debugElements);
+
+                // ── Y8 Geo / Spatial layer ─────────────────────────────────
+                const Y8_SERVER = window.Y8_SERVER_URL || 'http://localhost:3001/api/v1';
+
+                // Coordinate system: island center = Miami Beach
+                const coordMapper = new CoordinateMapper(
+                    { lat: 25.7617, lng: -80.1918 },
+                    0.002   // 1 Babylon unit ≈ 500 m
+                );
+                window._y8Mapper = coordMapper;
+
+                // Safe purchase zones from y8-server
+                const zoneRenderer = new ZoneRenderer(scene, coordMapper, Y8_SERVER);
+                await zoneRenderer.loadAndRender();
+                zoneRenderer.startLiveSync(30000);
+                window._y8ZoneRenderer = zoneRenderer;
+
+                // Agent avatars from y8-server
+                const agentAvatars = new AgentAvatarManager(scene, coordMapper, Y8_SERVER);
+                await agentAvatars.loadAndPlace();
+                agentAvatars.startLiveSync(15000);
+                window._y8AgentAvatars = agentAvatars;
+
+                // Spatial service menu (anchored to camera, toggle with M key)
+                const spatialMenu = new SpatialServiceMenu(scene, camera, Y8_SERVER);
+                spatialMenu.onServiceSelect = (cat, opt, agent) => {
+                    console.log(`[Beach] Service routed: ${cat.label} → ${opt.label} → agent ${agent?.id}`);
+                };
+                window._y8SpatialMenu = spatialMenu;
+
+                // Anchor menu to camera every frame
+                scene.registerAfterRender(() => {
+                    if (spatialMenu._visible) spatialMenu.anchorToCamera(2.5, -0.4);
+                });
+
+                // M key toggles the spatial service menu
+                scene.actionManager = scene.actionManager || new BABYLON.ActionManager(scene);
+                scene.actionManager.registerAction(
+                    new BABYLON.ExecuteCodeAction(
+                        { trigger: BABYLON.ActionManager.OnKeyUpTrigger, parameter: 'm' },
+                        () => spatialMenu.toggle()
+                    )
+                );
+
+                console.log("Application Initialization Complete. Press M for service menu.");
+
+            } catch (error) {
+                console.error("Initialization failed:", error);
+                alert(`Initialization failed: ${error.message}`);
+            }
+        }
+
+        // --- Start the application ---
+        main();
+
+    </script>
+</body>
+</html>

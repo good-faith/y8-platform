@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PKP Workers VR Visualization - The Beach</title>
+  <link rel="stylesheet" href="./css/premium.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: #000;
+    }
+
+    #renderCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+    }
+
+    #controls {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.85);
+      color: white;
+      padding: 20px;
+      border-radius: 12px;
+      max-width: 350px;
+      font-size: 14px;
+      line-height: 1.8;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    #controls h2 {
+      margin: 0 0 15px 0;
+      font-size: 20px;
+      color: #60a5fa;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #controls h3 {
+      margin: 15px 0 8px 0;
+      font-size: 14px;
+      color: #93c5fd;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    #controls p {
+      margin: 5px 0;
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    .worker-status {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .worker-card {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.3s;
+    }
+
+    .worker-card:hover {
+      background: rgba(255, 255, 255, 0.1);
+      transform: translateY(-2px);
+    }
+
+    .worker-card .name {
+      font-weight: 600;
+      font-size: 12px;
+      margin-bottom: 5px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .worker-card .status {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .color-indicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    #vrButton {
+      position: absolute;
+      bottom: 30px;
+      right: 30px;
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      z-index: 10;
+      box-shadow: 0 4px 20px rgba(59, 130, 246, 0.5);
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #vrButton:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 25px rgba(59, 130, 246, 0.7);
+    }
+
+    #vrButton:active {
+      transform: translateY(-1px);
+    }
+
+    #stats {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.85);
+      color: white;
+      padding: 15px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-family: 'Courier New', monospace;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      min-width: 150px;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      margin: 5px 0;
+      padding: 3px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .stat-label {
+      color: #93c5fd;
+    }
+
+    .stat-value {
+      color: #10b981;
+      font-weight: bold;
+    }
+
+    #loadingScreen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #1e3a8a 0%, #312e81 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      transition: opacity 0.5s;
+    }
+
+    #loadingScreen.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .loader {
+      width: 80px;
+      height: 80px;
+      border: 5px solid rgba(255, 255, 255, 0.1);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    #loadingText {
+      margin-top: 30px;
+      color: white;
+      font-size: 20px;
+      font-weight: 500;
+    }
+
+    .repo-selector {
+      margin-top: 15px;
+      padding: 15px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .repo-selector h3 {
+      margin: 0 0 10px 0;
+      font-size: 13px;
+      color: #93c5fd;
+    }
+
+    .repo-selector select {
+      width: 100%;
+      padding: 8px;
+      background: rgba(0, 0, 0, 0.5);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .repo-selector select:focus {
+      outline: none;
+      border-color: #60a5fa;
+    }
+
+    #feedback {
+      margin-top: 15px;
+      padding: 15px;
+      background: rgba(96, 165, 250, 0.1);
+      border-radius: 8px;
+      border: 1px solid rgba(96, 165, 250, 0.3);
+    }
+
+    #feedback h3 {
+      margin: 0 0 10px 0;
+      font-size: 13px;
+      color: #93c5fd;
+    }
+
+    #feedback textarea {
+      width: 100%;
+      min-height: 80px;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.5);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 6px;
+      font-size: 12px;
+      font-family: inherit;
+      resize: vertical;
+    }
+
+    #feedback button {
+      margin-top: 10px;
+      padding: 8px 16px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    #feedback button:hover {
+      background: #2563eb;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="renderCanvas"></canvas>
+  
+  <div id="loadingScreen">
+    <div class="loader"></div>
+    <div id="loadingText">Loading PKP Workers VR Scene...</div>
+  </div>
+
+  <div id="controls">
+    <h2>🤖 PKP Workers Visualization</h2>
+    
+    <p><strong>Watch your sub-PKP agents perform their tasks in real-time!</strong></p>
+    
+    <h3>🎮 Controls</h3>
+    <p><strong>Mouse:</strong> Click and drag to rotate</p>
+    <p><strong>Scroll:</strong> Zoom in/out</p>
+    <p><strong>WASD:</strong> Move camera</p>
+    <p><strong>VR:</strong> Click "Enter VR" button</p>
+
+    <h3>👷 Active Workers</h3>
+    <div class="worker-status">
+      <div class="worker-card" style="border-left: 3px solid #ef4444;">
+        <div class="name">
+          <span class="color-indicator" style="background: #ef4444;"></span>
+          Redis Encryptor
+        </div>
+        <div class="status">🔒 Encrypting data</div>
+      </div>
+      <div class="worker-card" style="border-left: 3px solid #10b981;">
+        <div class="name">
+          <span class="color-indicator" style="background: #10b981;"></span>
+          Test Runner
+        </div>
+        <div class="status">✅ Running tests</div>
+      </div>
+      <div class="worker-card" style="border-left: 3px solid #3b82f6;">
+        <div class="name">
+          <span class="color-indicator" style="background: #3b82f6;"></span>
+          Code Reviewer
+        </div>
+        <div class="status">📝 Reviewing code</div>
+      </div>
+      <div class="worker-card" style="border-left: 3px solid #f59e0b;">
+        <div class="name">
+          <span class="color-indicator" style="background: #f59e0b;"></span>
+          Metrics Collector
+        </div>
+        <div class="status">📊 Collecting data</div>
+      </div>
+      <div class="worker-card" style="border-left: 3px solid #f97316;">
+        <div class="name">
+          <span class="color-indicator" style="background: #f97316;"></span>
+          Security Auditor
+        </div>
+        <div class="status">🛡️ Scanning security</div>
+      </div>
+      <div class="worker-card" style="border-left: 3px solid #8b5cf6;">
+        <div class="name">
+          <span class="color-indicator" style="background: #8b5cf6;"></span>
+          Deployer
+        </div>
+        <div class="status">🚀 Deploying code</div>
+      </div>
+    </div>
+
+    <div class="repo-selector">
+      <h3>📦 Repository</h3>
+      <select id="repoSelect">
+        <option value="jasonsprouse/the-beach">jasonsprouse/the-beach</option>
+        <option value="jasonsprouse/y8-app">jasonsprouse/y8-app</option>
+      </select>
+    </div>
+
+    <div id="feedback">
+      <h3>💬 Your Feedback</h3>
+      <textarea id="feedbackText" placeholder="What do you think? What features would you like to see? How can we improve the worker visualizations?"></textarea>
+      <button onclick="submitFeedback()">Submit Feedback</button>
+    </div>
+  </div>
+
+  <div id="stats">
+    <div class="stat-row">
+      <span class="stat-label">FPS:</span>
+      <span class="stat-value" id="fps">0</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Workers:</span>
+      <span class="stat-value">6</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Tasks:</span>
+      <span class="stat-value" id="activeTasks">0</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Meshes:</span>
+      <span class="stat-value" id="meshCount">0</span>
+    </div>
+  </div>
+
+  <button id="vrButton">
+    <span>🥽</span>
+    <span>Enter VR</span>
+  </button>
+
+  <script src="https://cdn.babylonjs.com/babylon.js"></script>
+  <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+  <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
+
+  <script>
+    const API_BASE = window.location.origin;
+    
+    // Get main PKP from URL or localStorage
+    const urlParams = new URLSearchParams(window.location.search);
+    const mainPKP = urlParams.get('mainPKP') || localStorage.getItem('mainPKP') || 'demo-pkp';
+    
+    if (!localStorage.getItem('mainPKP')) {
+      localStorage.setItem('mainPKP', mainPKP);
+    }
+
+    // Initialize Babylon.js
+    const canvas = document.getElementById('renderCanvas');
+    const engine = new BABYLON.Engine(canvas, true, { 
+      preserveDrawingBuffer: true, 
+      stencil: true 
+    });
+    
+    let scene;
+    let camera;
+    let vrHelper;
+    let workers = new Map();
+    let activeTasksCount = 0;
+
+    // Worker task types
+    const WorkerTaskType = {
+      REDIS_ENCRYPTOR: 'redis_encryptor',
+      TEST_RUNNER: 'test_runner',
+      CODE_REVIEWER: 'code_reviewer',
+      METRICS_COLLECTOR: 'metrics_collector',
+      SECURITY_AUDITOR: 'security_auditor',
+      DEPLOYER: 'deployer',
+    };
+
+    // Create scene
+    async function createScene() {
+      scene = new BABYLON.Scene(engine);
+      scene.clearColor = new BABYLON.Color4(0.02, 0.02, 0.1, 1);
+      
+      // Camera
+      camera = new BABYLON.ArcRotateCamera(
+        'camera',
+        Math.PI / 2,
+        Math.PI / 3,
+        15,
+        BABYLON.Vector3.Zero(),
+        scene
+      );
+      camera.attachControl(canvas, true);
+      camera.lowerRadiusLimit = 8;
+      camera.upperRadiusLimit = 30;
+      camera.lowerBetaLimit = 0.1;
+      camera.upperBetaLimit = Math.PI / 2;
+      
+      // Lighting
+      const ambient = new BABYLON.HemisphericLight('ambient', new BABYLON.Vector3(0, 1, 0), scene);
+      ambient.intensity = 0.5;
+      
+      const mainLight = new BABYLON.PointLight('mainLight', new BABYLON.Vector3(0, 5, 0), scene);
+      mainLight.intensity = 0.8;
+      
+      // Environment
+      createEnvironment();
+      
+      // Initialize workers
+      await initializeWorkers();
+      
+      // Initialize VR
+      vrHelper = scene.createDefaultVRExperience({
+        createDeviceOrientationCamera: false,
+        useXR: true,
+      });
+      
+      // VR button
+      const vrButton = document.getElementById('vrButton');
+      vrButton.onclick = () => {
+        if (vrHelper.xr) {
+          vrHelper.xr.baseExperience.enterXRAsync('immersive-vr', 'local-floor');
+        }
+      };
+      
+      // Hide loading screen
+      document.getElementById('loadingText').textContent = 'Ready!';
+      setTimeout(() => {
+        document.getElementById('loadingScreen').classList.add('hidden');
+      }, 500);
+      
+      // Start worker simulations
+      startWorkerSimulation();
+      
+      return scene;
+    }
+
+    /**
+     * Create environment
+     */
+    function createEnvironment() {
+      // Floor
+      const floor = BABYLON.MeshBuilder.CreateGround('floor', { width: 30, height: 30 }, scene);
+      const floorMat = new BABYLON.PBRMaterial('floorMat', scene);
+      floorMat.albedoColor = new BABYLON.Color3(0.1, 0.1, 0.15);
+      floorMat.metallic = 0.2;
+      floorMat.roughness = 0.8;
+      floor.material = floorMat;
+
+      // Grid
+      for (let i = -15; i <= 15; i += 2) {
+        const lineX = BABYLON.MeshBuilder.CreateLines(`gridX${i}`, {
+          points: [new BABYLON.Vector3(i, 0.01, -15), new BABYLON.Vector3(i, 0.01, 15)],
+        }, scene);
+        lineX.color = new BABYLON.Color3(0.2, 0.3, 0.5);
+
+        const lineZ = BABYLON.MeshBuilder.CreateLines(`gridZ${i}`, {
+          points: [new BABYLON.Vector3(-15, 0.01, i), new BABYLON.Vector3(15, 0.01, i)],
+        }, scene);
+        lineZ.color = new BABYLON.Color3(0.2, 0.3, 0.5);
+      }
+
+      // Central platform
+      const platform = BABYLON.MeshBuilder.CreateCylinder('platform', { 
+        diameter: 8, 
+        height: 0.2 
+      }, scene);
+      platform.position.y = 0.1;
+      const platformMat = new BABYLON.PBRMaterial('platformMat', scene);
+      platformMat.albedoColor = new BABYLON.Color3(0.15, 0.15, 0.25);
+      platformMat.metallic = 0.5;
+      platformMat.roughness = 0.5;
+      platform.material = platformMat;
+
+      // Title
+      createTitle();
+    }
+
+    /**
+     * Create title
+     */
+    function createTitle() {
+      const titlePlane = BABYLON.MeshBuilder.CreatePlane('title', { width: 6, height: 1 }, scene);
+      titlePlane.position = new BABYLON.Vector3(0, 3.5, 0);
+      titlePlane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
+
+      const titleMat = new BABYLON.StandardMaterial('titleMat', scene);
+      titleMat.emissiveColor = new BABYLON.Color3(0.3, 0.5, 1);
+      titleMat.alpha = 0.9;
+      titlePlane.material = titleMat;
+
+      const texture = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(titlePlane);
+      const title = new BABYLON.GUI.TextBlock();
+      title.text = '🤖 PKP Workers - Task Visualization';
+      title.color = 'white';
+      title.fontSize = 60;
+      title.fontWeight = 'bold';
+      texture.addControl(title);
+    }
+
+    /**
+     * Initialize workers
+     */
+    async function initializeWorkers() {
+      const workerConfigs = [
+        {
+          type: WorkerTaskType.REDIS_ENCRYPTOR,
+          name: 'Redis Encryptor',
+          position: new BABYLON.Vector3(-6, 0, 4),
+          color: new BABYLON.Color3(1, 0.2, 0.2),
+          emoji: '🔒'
+        },
+        {
+          type: WorkerTaskType.TEST_RUNNER,
+          name: 'Test Runner',
+          position: new BABYLON.Vector3(-6, 0, -4),
+          color: new BABYLON.Color3(0.2, 1, 0.2),
+          emoji: '✅'
+        },
+        {
+          type: WorkerTaskType.CODE_REVIEWER,
+          name: 'Code Reviewer',
+          position: new BABYLON.Vector3(0, 0, 6),
+          color: new BABYLON.Color3(0.2, 0.5, 1),
+          emoji: '📝'
+        },
+        {
+          type: WorkerTaskType.METRICS_COLLECTOR,
+          name: 'Metrics Collector',
+          position: new BABYLON.Vector3(0, 0, -6),
+          color: new BABYLON.Color3(1, 0.8, 0.2),
+          emoji: '📊'
+        },
+        {
+          type: WorkerTaskType.SECURITY_AUDITOR,
+          name: 'Security Auditor',
+          position: new BABYLON.Vector3(6, 0, 4),
+          color: new BABYLON.Color3(1, 0.4, 0),
+          emoji: '🛡️'
+        },
+        {
+          type: WorkerTaskType.DEPLOYER,
+          name: 'Deployer',
+          position: new BABYLON.Vector3(6, 0, -4),
+          color: new BABYLON.Color3(0.6, 0.2, 1),
+          emoji: '🚀'
+        },
+      ];
+
+      workerConfigs.forEach(config => {
+        const worker = createWorkerStation(config);
+        workers.set(config.type, worker);
+      });
+    }
+
+    /**
+     * Create worker station
+     */
+    function createWorkerStation(config) {
+      const station = new BABYLON.TransformNode(`station_${config.type}`, scene);
+      station.position = config.position;
+
+      // Base platform
+      const base = BABYLON.MeshBuilder.CreateBox(`base_${config.type}`, { 
+        width: 3, 
+        height: 0.2, 
+        depth: 3 
+      }, scene);
+      base.position.y = 0.1;
+      base.parent = station;
+
+      const baseMat = new BABYLON.PBRMaterial(`baseMat_${config.type}`, scene);
+      baseMat.albedoColor = config.color;
+      baseMat.metallic = 0.7;
+      baseMat.roughness = 0.3;
+      baseMat.emissiveColor = config.color.scale(0.2);
+      base.material = baseMat;
+
+      // Worker visualization
+      createWorkerViz(config, station);
+
+      // Label
+      createLabel(config.name, config.emoji, station, config.color);
+
+      // Status panel
+      const statusPanel = createStatusPanel(config.type, station);
+
+      return {
+        type: config.type,
+        name: config.name,
+        mesh: station,
+        status: 'idle',
+        progress: 0,
+        currentTask: null,
+        statusPanel: statusPanel,
+      };
+    }
+
+    /**
+     * Create worker visualization based on type
+     */
+    function createWorkerViz(config, parent) {
+      // Simplified visualizations for demo
+      const viz = BABYLON.MeshBuilder.CreateSphere(`viz_${config.type}`, { 
+        diameter: 1.5 
+      }, scene);
+      viz.position = new BABYLON.Vector3(0, 1.5, 0);
+      viz.parent = parent;
+
+      const vizMat = new BABYLON.PBRMaterial(`vizMat_${config.type}`, scene);
+      vizMat.albedoColor = config.color;
+      vizMat.metallic = 0.8;
+      vizMat.roughness = 0.2;
+      vizMat.emissiveColor = config.color.scale(0.4);
+      viz.material = vizMat;
+
+      // Pulsing animation
+      const pulseAnim = new BABYLON.Animation(
+        'pulse',
+        'scaling',
+        30,
+        BABYLON.Animation.ANIMATIONTYPE_VECTOR3,
+        BABYLON.Animation.ANIMATIONLOOPMODE_CYCLE
+      );
+      pulseAnim.setKeys([
+        { frame: 0, value: new BABYLON.Vector3(1, 1, 1) },
+        { frame: 30, value: new BABYLON.Vector3(1.1, 1.1, 1.1) },
+        { frame: 60, value: new BABYLON.Vector3(1, 1, 1) },
+      ]);
+      viz.animations = [pulseAnim];
+      scene.beginAnimation(viz, 0, 60, true);
+    }
+
+    /**
+     * Create label
+     */
+    function createLabel(name, emoji, parent, color) {
+      const label = BABYLON.MeshBuilder.CreatePlane('label', { width: 2.5, height: 0.4 }, scene);
+      label.position = new BABYLON.Vector3(0, 3, 0);
+      label.parent = parent;
+      label.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
+
+      const labelMat = new BABYLON.StandardMaterial('labelMat', scene);
+      labelMat.emissiveColor = color.scale(0.5);
+      labelMat.alpha = 0.8;
+      label.material = labelMat;
+
+      const texture = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(label);
+      const text = new BABYLON.GUI.TextBlock();
+      text.text = `${emoji} ${name}`;
+      text.color = 'white';
+      text.fontSize = 36;
+      text.fontWeight = 'bold';
+      texture.addControl(text);
+    }
+
+    /**
+     * Create status panel
+     */
+    function createStatusPanel(type, parent) {
+      const panel = BABYLON.MeshBuilder.CreatePlane('statusPanel', { width: 2.5, height: 0.6 }, scene);
+      panel.position = new BABYLON.Vector3(0, 0.5, 0);
+      panel.parent = parent;
+      panel.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
+
+      const panelMat = new BABYLON.StandardMaterial('panelMat', scene);
+      panelMat.emissiveColor = new BABYLON.Color3(0.1, 0.1, 0.2);
+      panelMat.alpha = 0.9;
+      panel.material = panelMat;
+
+      const texture = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(panel, 512, 256);
+
+      const statusText = new BABYLON.GUI.TextBlock();
+      statusText.text = '⏸️ Idle';
+      statusText.color = 'white';
+      statusText.fontSize = 32;
+      statusText.top = -40;
+      texture.addControl(statusText);
+
+      const progressText = new BABYLON.GUI.TextBlock();
+      progressText.text = '0%';
+      progressText.color = '#60a5fa';
+      progressText.fontSize = 24;
+      progressText.top = 10;
+      texture.addControl(progressText);
+
+      const taskText = new BABYLON.GUI.TextBlock();
+      taskText.text = '';
+      taskText.color = 'rgba(255,255,255,0.7)';
+      taskText.fontSize = 18;
+      taskText.top = 40;
+      taskText.textWrapping = true;
+      texture.addControl(taskText);
+
+      return {
+        texture,
+        statusText,
+        progressText,
+        taskText,
+      };
+    }
+
+    /**
+     * Start worker simulation
+     */
+    function startWorkerSimulation() {
+      setInterval(() => {
+        activeTasksCount = 0;
+
+        workers.forEach(worker => {
+          // Randomly assign tasks
+          if (worker.status === 'idle' && Math.random() > 0.8) {
+            assignTask(worker);
+            activeTasksCount++;
+          }
+
+          // Update progress
+          if (worker.status === 'working') {
+            worker.progress += 5 + Math.random() * 10;
+            activeTasksCount++;
+            
+            if (worker.progress >= 100) {
+              completeTask(worker);
+            }
+          }
+
+          updateWorkerDisplay(worker);
+        });
+
+        document.getElementById('activeTasks').textContent = activeTasksCount;
+      }, 1000);
+    }
+
+    /**
+     * Assign task
+     */
+    function assignTask(worker) {
+      const tasks = getTasksForType(worker.type);
+      worker.currentTask = tasks[Math.floor(Math.random() * tasks.length)];
+      worker.status = 'working';
+      worker.progress = 0;
+    }
+
+    /**
+     * Complete task
+     */
+    function completeTask(worker) {
+      worker.status = 'completed';
+      worker.progress = 100;
+
+      setTimeout(() => {
+        worker.status = 'idle';
+        worker.progress = 0;
+        worker.currentTask = null;
+      }, 2000);
+    }
+
+    /**
+     * Get tasks for type
+     */
+    function getTasksForType(type) {
+      const repo = document.getElementById('repoSelect').value;
+      
+      const taskMap = {
+        [WorkerTaskType.REDIS_ENCRYPTOR]: [
+          `Encrypting ${repo} session data...`,
+          `Securing Redis keys for ${repo}...`,
+          'PKP credential encryption...',
+        ],
+        [WorkerTaskType.TEST_RUNNER]: [
+          `Running ${repo} Playwright tests...`,
+          'E2E test suite execution...',
+          `Testing ${repo} components...`,
+        ],
+        [WorkerTaskType.CODE_REVIEWER]: [
+          `Reviewing ${repo} PR #${Math.floor(Math.random() * 200)}...`,
+          'Security vulnerability scan...',
+          'Code style analysis...',
+        ],
+        [WorkerTaskType.METRICS_COLLECTOR]: [
+          `Collecting ${repo} metrics...`,
+          'Performance monitoring...',
+          'User analytics processing...',
+        ],
+        [WorkerTaskType.SECURITY_AUDITOR]: [
+          `Auditing ${repo} dependencies...`,
+          'Vulnerability scanning...',
+          'Access control review...',
+        ],
+        [WorkerTaskType.DEPLOYER]: [
+          `Deploying ${repo} to production...`,
+          'Building Docker container...',
+          'Verifying deployment health...',
+        ],
+      };
+
+      return taskMap[type] || ['Processing...'];
+    }
+
+    /**
+     * Update worker display
+     */
+    function updateWorkerDisplay(worker) {
+      const statusEmojis = {
+        idle: '⏸️',
+        working: '⚙️',
+        completed: '✅',
+      };
+
+      worker.statusPanel.statusText.text = `${statusEmojis[worker.status]} ${worker.status.charAt(0).toUpperCase() + worker.status.slice(1)}`;
+      worker.statusPanel.progressText.text = `${Math.round(worker.progress)}%`;
+      worker.statusPanel.taskText.text = worker.currentTask || '';
+    }
+
+    /**
+     * Submit feedback
+     */
+    function submitFeedback() {
+      const feedback = document.getElementById('feedbackText').value;
+      if (!feedback.trim()) {
+        alert('Please enter your feedback!');
+        return;
+      }
+
+      console.log('Feedback submitted:', feedback);
+      
+      // In production, this would send to an API
+      fetch(`${API_BASE}/npe/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mainPKP,
+          feedback,
+          context: 'pkp-workers-vr',
+          repository: document.getElementById('repoSelect').value,
+        })
+      }).then(() => {
+        alert('Thank you for your feedback! 🎉');
+        document.getElementById('feedbackText').value = '';
+      }).catch(err => {
+        alert('Feedback saved locally (server unavailable)');
+        console.log('Saved feedback:', { mainPKP, feedback });
+      });
+    }
+
+    // Initialize
+    createScene().then(() => {
+      // Render loop
+      engine.runRenderLoop(() => {
+        scene.render();
+        
+        // Update stats
+        document.getElementById('fps').textContent = Math.round(engine.getFps());
+        document.getElementById('meshCount').textContent = scene.meshes.length;
+      });
+      
+      // Resize
+      window.addEventListener('resize', () => {
+        engine.resize();
+      });
+    });
+
+    // Repository change handler
+    document.getElementById('repoSelect').addEventListener('change', () => {
+      console.log('Repository changed to:', document.getElementById('repoSelect').value);
+      // Tasks will automatically update on next assignment
+    });
+  </script>
+</body>
+</html>

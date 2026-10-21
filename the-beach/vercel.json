@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "name": "tropical-xr-paradise",
+  "buildCommand": "npm run build",
+  "installCommand": "npm install",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/api/index"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  }
+}

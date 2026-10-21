@@ -1,0 +1,49 @@
+# the-beach — NestJS XR server (port 3003, WebSocket-heavy)
+app = 'y8-beach-jason-sprouse'
+primary_region = 'sjc'
+
+[build]
+  dockerfile = '../docker/beach.Dockerfile'
+
+[env]
+  NODE_ENV = 'production'
+  PORT = '3003'
+
+[http_service]
+  internal_port = 3003
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  # WebSocket connections need longer idle timeout
+  [http_service.concurrency]
+    type = 'connections'
+    hard_limit = 500
+    soft_limit = 400
+
+[[services]]
+  protocol = 'tcp'
+  internal_port = 3003
+
+  [[services.ports]]
+    port = 80
+    handlers = ['http']
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ['tls', 'http']
+
+  # Longer timeout for WebSocket/XR sessions
+  [[services.http_checks]]
+    interval = '30s'
+    timeout = '10s'
+    grace_period = '15s'
+    method = 'GET'
+    path = '/xr/info'
+
+[[vm]]
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 512

@@ -34,12 +34,20 @@ jobs:
           filters: |
             y8_app:
               - 'y8-app/**'
+              - 'docker/web.Dockerfile'
+              - 'packages/**'
             y8_premier:
               - 'y8-premier/**'
+              - 'docker/premier.Dockerfile'
+              - 'packages/**'
             y8_server:
               - 'y8-server/**'
+              - 'docker/server.Dockerfile'
+              - 'packages/**'
             the_beach:
               - 'the-beach/**'
+              - 'docker/beach.Dockerfile'
+              - 'packages/**'
 
   # ── y8-app ─────────────────────────────────────────────────────────────────
   deploy-y8-app:
@@ -72,8 +80,7 @@ jobs:
         uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy to Fly.io
-        working-directory: y8-app
-        run: flyctl deploy --config fly.toml --strategy immediate --remote-only
+        run: flyctl deploy . --config y8-app/fly.toml --dockerfile docker/web.Dockerfile --strategy immediate --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
@@ -118,8 +125,7 @@ jobs:
         uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy to Fly.io
-        working-directory: y8-premier
-        run: flyctl deploy --config fly.toml --strategy immediate --remote-only
+        run: flyctl deploy . --config y8-premier/fly.toml --dockerfile docker/premier.Dockerfile --strategy immediate --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
@@ -157,8 +163,7 @@ jobs:
         uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy to Fly.io
-        working-directory: y8-server
-        run: flyctl deploy --config fly.toml --strategy immediate --remote-only
+        run: flyctl deploy . --config y8-server/fly.toml --dockerfile docker/server.Dockerfile --strategy immediate --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
@@ -194,8 +199,7 @@ jobs:
         uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy to Fly.io
-        working-directory: the-beach
-        run: flyctl deploy --config fly.toml --strategy immediate --remote-only
+        run: flyctl deploy . --config the-beach/fly.toml --dockerfile docker/beach.Dockerfile --strategy immediate --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 

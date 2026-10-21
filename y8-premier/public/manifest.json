@@ -1,0 +1,16 @@
+{
+  "name": "Y8 Premier",
+  "short_name": "Y8 Premier",
+  "description": "Y8 Premier — your premium financial command center with live bank data and crypto income tracking.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#003087",
+  "theme_color": "#003087",
+  "categories": ["finance", "banking"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
