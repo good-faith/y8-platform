@@ -169,7 +169,7 @@ export function useUpdateSettings(contractAddress: Address) {
         settings.darkMode,
       ],
       chainId: baseSepolia.id,
-    });
+    } as any);
   };
 
   return { update, isPending: isPending || isConfirming, isSuccess, hash };

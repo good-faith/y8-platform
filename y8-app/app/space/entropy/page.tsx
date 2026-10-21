@@ -84,7 +84,7 @@ export default function EntropyPage() {
           entropy.sensors.network,
         ],
         chainId: baseSepolia.id,
-      });
+      } as any);
       setMintHash(hash);
       toast.loading('Minting on Base Sepolia…', { id: 'mint' });
     } catch (e: any) {
