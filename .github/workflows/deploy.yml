@@ -10,6 +10,10 @@ on:
         required: false
         default: 'yes'
 
+concurrency:
+  group: y8-platform-fly-deploy
+  cancel-in-progress: false
+
 env:
   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
@@ -36,20 +40,24 @@ jobs:
               - 'y8-app/**'
               - 'docker/web.Dockerfile'
               - 'packages/**'
+              - '.github/workflows/deploy.yml'
             y8_premier:
               - 'y8-premier/**'
               - 'docker/premier.Dockerfile'
               - 'packages/**'
+              - '.github/workflows/deploy.yml'
             y8_server:
               - 'y8-server/**'
               - 'docker/server.Dockerfile'
               - 'packages/**'
+              - '.github/workflows/deploy.yml'
             the_beach:
               - 'the-beach/**'
               - 'docker/beach.Dockerfile'
               - 'packages/**'
+              - '.github/workflows/deploy.yml'
 
-  # ── y8-app ─────────────────────────────────────────────────────────────────
+  # ── y8-app (y8-web) ────────────────────────────────────────────────────────
   deploy-y8-app:
     name: Deploy y8-app (Holographic Wallet)
     needs: changes
@@ -57,6 +65,9 @@ jobs:
       needs.changes.outputs.y8_app == 'true' ||
       github.event.inputs.force_all == 'yes'
     runs-on: ubuntu-latest
+    environment:
+      name: y8-web
+      url: https://y8-web-jason-sprouse.fly.dev
     steps:
       - uses: actions/checkout@v4
 
@@ -97,6 +108,9 @@ jobs:
       needs.changes.outputs.y8_premier == 'true' ||
       github.event.inputs.force_all == 'yes'
     runs-on: ubuntu-latest
+    environment:
+      name: y8-premier
+      url: https://y8-premier-jason-sprouse.fly.dev
     steps:
       - uses: actions/checkout@v4
 
@@ -140,6 +154,9 @@ jobs:
       needs.changes.outputs.y8_server == 'true' ||
       github.event.inputs.force_all == 'yes'
     runs-on: ubuntu-latest
+    environment:
+      name: y8-server
+      url: https://y8-server-jason-sprouse.fly.dev
     steps:
       - uses: actions/checkout@v4
 
@@ -170,7 +187,7 @@ jobs:
         run: |
           echo "✅ y8-server deployed: https://y8-server-jason-sprouse.fly.dev"
 
-  # ── the-beach ──────────────────────────────────────────────────────────────
+  # ── the-beach (y8-beach) ───────────────────────────────────────────────────
   deploy-the-beach:
     name: Deploy the-beach (XR/VR Space)
     needs: changes
@@ -178,6 +195,9 @@ jobs:
       needs.changes.outputs.the_beach == 'true' ||
       github.event.inputs.force_all == 'yes'
     runs-on: ubuntu-latest
+    environment:
+      name: y8-beach
+      url: https://y8-beach-jason-sprouse.fly.dev
     steps:
       - uses: actions/checkout@v4
 
@@ -208,12 +228,15 @@ jobs:
         run: |
           echo "✅ the-beach deployed: https://y8-beach-jason-sprouse.fly.dev"
 
-  # ── Summary ────────────────────────────────────────────────────────────────
+  # ── Summary & Production Environment Status ────────────────────────────────
   deploy-summary:
     name: Deployment Summary
     needs: [deploy-y8-app, deploy-y8-premier, deploy-y8-server, deploy-the-beach]
-    if: always()
+    if: ${{ !failure() && !cancelled() }}
     runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://y8-web-jason-sprouse.fly.dev
     steps:
       - name: Write summary
         run: |
