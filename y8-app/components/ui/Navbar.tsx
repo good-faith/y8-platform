@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
-import { motion, AnimatePresence } from 'framer-motion';
 
 const navItems = [
   { href: '/', label: 'Home' },
@@ -64,47 +63,48 @@ const Navbar = () => {
         <span></span>
       </button>
       
-      <AnimatePresence>
-        {(isOpen || !isMobile) && (
-          <motion.div
-            initial={isMobile ? { y: -50, opacity: 0 } : {}}
-            animate={isMobile ? { y: 0, opacity: 1 } : {}}
-            exit={isMobile ? { y: -50, opacity: 0 } : {}}
-            transition={{ duration: 0.25, ease: 'easeOut' }}
-            className={`slimmenu ${isOpen ? 'open' : ''}`}
-            style={isMobile ? { position: 'absolute', top: 0, left: 0, width: '100%', zIndex: 150 } : {}}
-          >
-            {navItems.map((item) => {
-              const isActive = pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={isActive ? 'active' : ''}
-                  onClick={() => isMobile && setIsOpen(false)}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-            
-            {/* Show logout button if authenticated */}
-            {isAuthenticated && user && (
-              <div className="border-t border-slate-700/60 pt-2 mt-2">
-                <div className="text-[13px] text-slate-400 pb-2">
-                  {user.address.slice(0, 6)}...{user.address.slice(-4)}
-                </div>
-                <button
-                  onClick={handleLogout}
-                  className="w-full p-2 bg-red-600 hover:bg-red-700 text-white border-none rounded cursor-pointer text-sm font-medium"
-                >
-                  Logout
-                </button>
-              </div>
-            )}
-          </motion.div>
+      <div className={`slimmenu ${isOpen ? 'open' : ''}`}>
+        {navItems.map((item) => {
+          const isActive = pathname === item.href;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={isActive ? 'active' : ''}
+              onClick={() => isMobile && setIsOpen(false)}
+            >
+              {item.label}
+            </Link>
+          );
+        })}
+        
+        {/* Show logout button if authenticated */}
+        {isAuthenticated && user && (
+          <div style={isMobile
+            ? { borderTop: '1px solid #ccc', padding: '0.75rem 1.25rem', marginTop: '0.5rem' }
+            : { display: 'flex', alignItems: 'center', gap: '0.75rem', paddingLeft: '1rem', marginLeft: '0.5rem', borderLeft: '1px solid rgba(0,0,0,0.1)' }
+          }>
+            <div style={{ fontSize: '0.85rem', color: '#666', fontFamily: 'monospace' }}>
+              {user.address.slice(0, 6)}...{user.address.slice(-4)}
+            </div>
+            <button
+              onClick={handleLogout}
+              style={{
+                padding: '0.4rem 0.85rem',
+                backgroundColor: '#ff4444',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '0.85rem',
+                fontWeight: '500'
+              }}
+            >
+              Logout
+            </button>
+          </div>
         )}
-      </AnimatePresence>
+      </div>
     </nav>
   );
 };

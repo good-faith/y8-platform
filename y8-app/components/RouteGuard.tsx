@@ -5,10 +5,10 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '../context/AuthContext';
 
 // Define public paths that don't require authentication
-const publicPaths = ['/auth'];
+const publicPaths = ['/auth', '/about-us'];
 
 // Define protected paths that require authentication
-const protectedPaths = ['/', '/space', '/food', '/energy', '/health'];
+const protectedPaths = ['/', '/space', '/food', '/energy', '/health', '/shop', '/calendar', '/blog'];
 
 export default function RouteGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();

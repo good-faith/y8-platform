@@ -11,6 +11,13 @@ type UserProfile = {
   role?: 'admin' | 'user';
 };
 
+export type UserPreferences = {
+  primaryDomain?: string;
+  balancingStrategy?: string;
+  tradePreference?: string;
+  automationStyle?: string;
+};
+
 type AuthContextType = {
   /** Wallet address from NextAuth SIWE session */
   user: UserProfile | null;
@@ -24,6 +31,9 @@ type AuthContextType = {
   y8User: Y8User | null;
   /** True when y8Token is present (i.e. y8-server is reachable and user is on Base) */
   isY8Authenticated: boolean;
+  /** Persisted operator preferences (domain, balancing, trade, automation) */
+  preferences: UserPreferences;
+  updatePreference: (key: keyof UserPreferences, value: string) => void;
   logout: () => Promise<void>;
 };
 
@@ -58,12 +68,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [y8Token, setY8Token]         = useState<string | null>(null);
   const [y8User, setY8User]           = useState<Y8User | null>(null);
+  const [preferences, setPreferences] = useState<UserPreferences>({});
   // hasResolved: stays false until session status has settled AND user state is synced.
   // This prevents the 1-render-cycle window where status='authenticated' but user=null
   // which was causing the RouteGuard to redirect to /auth on every page load.
   const [hasResolved, setHasResolved] = useState(false);
 
   const isLoading = status === 'loading' || !hasResolved;
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('y8_user_preferences');
+      if (stored) {
+        try {
+          setPreferences(JSON.parse(stored));
+        } catch {}
+      }
+    }
+  }, []);
+
+  const updatePreference = (key: keyof UserPreferences, value: string) => {
+    setPreferences(prev => {
+      const next = { ...prev, [key]: value };
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('y8_user_preferences', JSON.stringify(next));
+      }
+      return next;
+    });
+  };
 
   // ── Sync from NextAuth session ─────────────────────────────────────────────
   useEffect(() => {
@@ -125,6 +157,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       y8Token,
       y8User,
       isY8Authenticated,
+      preferences,
+      updatePreference,
       logout,
     }}>
       {children}

@@ -5,7 +5,9 @@ import Providers from '../components/Providers';
 import TopBar from '../components/ui/TopBar';
 import NotificationBar from '../components/ui/NotificationBar';
 import Header from '../components/ui/Header';
+import Navbar from '../components/ui/Navbar';
 import Footer from '../components/ui/Footer';
+import AiAssistant from '../components/ui/AiAssistant';
 import RouteGuard from '../components/RouteGuard';
 import '../styles/globals.css';
 
@@ -28,7 +30,6 @@ export const viewport: Viewport = {
   themeColor: '#f5c518',
 };
 
-
 export const metadata: Metadata = {
   title: {
     default: 'Home | Y8',
@@ -46,21 +47,19 @@ export const metadata: Metadata = {
   },
 };
 
-
-
-
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${poppins.variable} ${inter.variable}`}>
-      <body>
+    <html lang="en" className={`${poppins.variable} ${inter.variable}`} suppressHydrationWarning>
+      <body suppressHydrationWarning>
         <Providers>
           <NotificationBar />
           <TopBar />
           <Header />
+          <Navbar />
 
           <main className="main-content">
             <RouteGuard>
@@ -69,6 +68,7 @@ export default function RootLayout({
           </main>
           
           <Footer />
+          <AiAssistant />
         </Providers>
         {/* PWA service worker registration */}
         <script dangerouslySetInnerHTML={{ __html: `
