@@ -6,6 +6,7 @@ import { GoogleGenAI, GenerateVideosOperation } from "@google/genai";
 import { Configuration, PlaidApi, PlaidEnvironments, Products, CountryCode, LinkTokenCreateRequest } from "plaid";
 import session from "express-session";
 import { generateNonce, SiweMessage } from "siwe";
+import { JsonRpcProvider } from "ethers";
 import dotenv from "dotenv";
 
 dotenv.config({ override: true });
@@ -44,10 +45,12 @@ app.post('/api/auth/verify', async function (req, res) {
     }
 
     const message = new SiweMessage(req.body.message);
+    const rpcUrl = message.chainId === 84532 ? (process.env.BASE_SEPOLIA_RPC_URL || 'https://sepolia.base.org') : (process.env.BASE_RPC_URL || 'https://mainnet.base.org');
+    const provider = new JsonRpcProvider(rpcUrl);
     const fields = await message.verify({ 
       signature: req.body.signature, 
       nonce: (req.session as any).nonce 
-    });
+    }, { provider });
 
     (req.session as any).siwe = fields;
     if (fields.data.expirationTime) {

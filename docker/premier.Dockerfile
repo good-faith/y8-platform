@@ -8,9 +8,10 @@ COPY y8-app/package.json         ./y8-app/
 COPY y8-server/package.json      ./y8-server/
 COPY y8-premier/package.json     ./y8-premier/
 COPY the-beach/package.json      ./the-beach/
-COPY packages/                      ./packages/
+COPY packages/                   ./packages/
 
-RUN npm ci --legacy-peer-deps
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --legacy-peer-deps --prefer-offline --no-audit
 
 COPY y8-premier/ ./y8-premier/
 
@@ -21,6 +22,9 @@ ENV VITE_Y8_SERVER_URL=$VITE_Y8_SERVER_URL
 
 WORKDIR /app/y8-premier
 RUN npm run build
+
+WORKDIR /app
+RUN npm prune --omit=dev --legacy-peer-deps
 
 # ─── Production stage ─────────────────────────────────────────────────────────
 FROM node:20-alpine AS runner

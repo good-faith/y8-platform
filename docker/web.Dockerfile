@@ -13,8 +13,9 @@ COPY y8-premier/package.json     ./y8-premier/
 COPY the-beach/package.json      ./the-beach/
 COPY packages/                   ./packages/
 
-# Install all workspace deps from root (resolves @y8/* packages)
-RUN npm ci --legacy-peer-deps
+# Install all workspace deps from root using BuildKit npm cache
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --legacy-peer-deps --prefer-offline --no-audit
 
 # Patch @noble/hashes 1.3.x — adds sha2 + anumber missing in this version
 # (pinned to 1.3.x by @scure/bip39; ox+viem nested @noble/curves needs 1.8 API)
@@ -49,15 +50,18 @@ ENV NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=$NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID
 ENV NEXT_PUBLIC_Y8_SERVER_URL=$NEXT_PUBLIC_Y8_SERVER_URL
 ENV NEXT_PUBLIC_Y8_PREMIER_URL=$NEXT_PUBLIC_Y8_PREMIER_URL
 ENV NEXT_PUBLIC_THE_BEACH_URL=$NEXT_PUBLIC_THE_BEACH_URL
+ENV NEXT_TELEMETRY_DISABLED=1
 
-# Build Next.js
+# Build Next.js with persistent BuildKit webpack cache
 WORKDIR /app/y8-app
-RUN npm run build
+RUN --mount=type=cache,target=/app/y8-app/.next/cache \
+    npm run build
 
 # ─── Production stage ─────────────────────────────────────────────────────────
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
 COPY --from=builder /app/y8-app/.next/standalone ./
 COPY --from=builder /app/y8-app/.next/static      ./y8-app/.next/static
