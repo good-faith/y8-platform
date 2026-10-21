@@ -19,6 +19,12 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "express": [
+        "../node_modules/@types/express"
+      ],
+      "express-serve-static-core": [
+        "../node_modules/@types/express-serve-static-core"
       ]
     },
     "allowImportingTsExtensions": true,

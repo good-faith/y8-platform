@@ -1,10 +1,16 @@
 'use client';
 
 import React, { useRef, useState, useMemo, Suspense } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Canvas, useFrame, useThree, ThreeElements } from '@react-three/fiber';
 import { Html, OrbitControls, Stars, Billboard, Text } from '@react-three/drei';
 import * as THREE from 'three';
-import type { Y8Agent } from '../../lib/y8-client';
+import type { Y8Agent } from '../lib/y8-client';
+
+declare module 'react' {
+  namespace JSX {
+    interface IntrinsicElements extends ThreeElements {}
+  }
+}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
