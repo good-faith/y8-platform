@@ -1,6 +1,5 @@
 import express from "express";
 import path from "path";
-import { createServer as createViteServer } from "vite";
 import multer from "multer";
 import { GoogleGenAI, GenerateVideosOperation } from "@google/genai";
 import { Configuration, PlaidApi, PlaidEnvironments, Products, CountryCode, LinkTokenCreateRequest } from "plaid";
@@ -491,6 +490,7 @@ app.post("/api/ai/text-to-3d", async (req, res) => {
 // --- Vite Integration & Server Startup ---
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",

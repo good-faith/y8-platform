@@ -18,9 +18,6 @@ COPY the-beach/ ./the-beach/
 WORKDIR /app/the-beach
 RUN npx nest build
 
-WORKDIR /app
-RUN npm prune --omit=dev --legacy-peer-deps
-
 # ─── Production stage ─────────────────────────────────────────────────────────
 FROM node:20-alpine AS runner
 WORKDIR /app

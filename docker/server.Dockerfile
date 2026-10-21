@@ -18,9 +18,6 @@ COPY y8-server/ ./y8-server/
 WORKDIR /app/y8-server
 RUN npm run build
 
-WORKDIR /app
-RUN npm prune --omit=dev --legacy-peer-deps
-
 # ─── Production stage ─────────────────────────────────────────────────────────
 FROM node:20-alpine AS runner
 WORKDIR /app

@@ -23,9 +23,6 @@ ENV VITE_Y8_SERVER_URL=$VITE_Y8_SERVER_URL
 WORKDIR /app/y8-premier
 RUN npm run build
 
-WORKDIR /app
-RUN npm prune --omit=dev --legacy-peer-deps
-
 # ─── Production stage ─────────────────────────────────────────────────────────
 FROM node:20-alpine AS runner
 WORKDIR /app
