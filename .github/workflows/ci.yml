@@ -2,7 +2,12 @@ name: 🧪 CI — Build & Verify
 
 on:
   push:
-    branches: [development]
+    branches:
+      - development
+      - 'feat/**'
+      - 'feature/**'
+      - 'fix/**'
+      - 'chore/**'
   pull_request:
     branches: [main, development]
 
@@ -17,7 +22,7 @@ jobs:
           - app: y8-app
             build_cmd: "npm run build"
           - app: y8-server
-            build_cmd: "npm run build"
+            build_cmd: "npm run build && npm test -- --passWithNoTests"
           - app: y8-premier
             build_cmd: "npm run build"
           - app: the-beach
@@ -39,7 +44,7 @@ jobs:
       - name: Type-check
         run: npx tsc --noEmit -p ${{ matrix.app }}/tsconfig.json
 
-      - name: Build
+      - name: Build & Test
         run: ${{ matrix.build_cmd }}
         working-directory: ${{ matrix.app }}
         env:
